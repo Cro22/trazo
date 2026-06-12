@@ -2,19 +2,25 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+
+	"github.com/Cro22/trazo/trajectory"
 )
 
-//TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
 func main() {
-	//TIP <p>Press <shortcut actionId="ShowIntentionActions"/> when your caret is at the underlined text
-	// to see how GoLand suggests fixing the warning.</p><p>Alternatively, if available, click the lightbulb to view possible fixes.</p>
-	s := "gopher"
-	fmt.Println("Hello and welcome, %s!", s)
-
-	for i := 1; i <= 5; i++ {
-		//TIP <p>To start your debugging session, right-click your code in the editor and select the Debug option.</p> <p>We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-		// for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.</p>
-		fmt.Println("i =", 100/i)
+	var testJson, errFile = os.ReadFile("./testdata/sample_run.json")
+	if errFile != nil {
+		log.Fatalf("Error reading file: %v", errFile)
+	}
+	run, err := trajectory.LoadRun(testJson)
+	if err != nil {
+		log.Fatalf("Error loading run: %v", err)
+	}
+	for i, s := range run.Steps {
+		if s.Error != "" {
+			log.Printf("step %d error: %s", i, s.Error)
+		}
+		fmt.Printf("Step %d: Node: %s, Cost: %f, LLM: %s, Output: %s, Input: %s, Error: %s\n", i, s.Node, s.Cost, s.LLM, s.Output, s.Input, s.Error)
 	}
 }
