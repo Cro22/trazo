@@ -11,9 +11,16 @@ type Evaluator interface {
 type Judgment string
 
 const (
-	JudgmentGood    Judgment = "good"
+	JudgmentGood Judgment = "good"
+	// JudgmentNeutral marks an anomaly that needs human review rather than
+	// immediate action: the cause may be external to the agent (a timeout, an
+	// interrupted run, broken instrumentation), so it is surfaced but not blamed
+	// on the trajectory itself.
 	JudgmentNeutral Judgment = "JudgmentNeutral"
-	JudgmentBad     Judgment = "bad"
+	// JudgmentBad marks a failure attributable to the agent and actionable right
+	// away: the fault is real and present in the trajectory (for example, a tool
+	// that returned an error).
+	JudgmentBad Judgment = "bad"
 )
 
 type Evaluation struct {
