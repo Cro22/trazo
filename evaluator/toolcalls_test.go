@@ -76,3 +76,27 @@ func TestToolCallEvaluator_MissingResult(t *testing.T) {
 		t.Errorf("expected StepIndex 1, got %d", eval.Findings[0].StepIndex)
 	}
 }
+
+func TestToolCallEvaluator_OrphanResult(t *testing.T) {
+	data, err := os.ReadFile("../testdata/sample_run_orphan_result.json")
+	if err != nil {
+		t.Fatalf("failed to read fixture: %v", err)
+	}
+
+	run, err := trajectory.LoadRun(data)
+	if err != nil {
+		t.Fatalf("failed to load run: %v", err)
+	}
+
+	evaluator := &ToolCallEvaluator{}
+	eval, err := evaluator.EvaluateRun(run)
+	if err != nil {
+		t.Fatalf("unexpected error in EvaluateRun: %v", err)
+	}
+
+	if len(eval.Findings) != 1 {
+		t.Errorf("expected 1 finding, got %d", len(eval.Findings))
+	} else if eval.Findings[0].StepIndex != 2 {
+		t.Errorf("expected StepIndex 2, got %d", eval.Findings[0].StepIndex)
+	}
+}

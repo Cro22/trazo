@@ -1,0 +1,42 @@
+{
+  "id": "run-orphan-7c",
+  "agent": "data_extractor",
+  "version": "1.2.0",
+  "startTime": "2026-06-12T14:00:00Z",
+  "endTime": "2026-06-12T14:00:06Z",
+  "steps": [
+    {
+      "node": "start",
+      "type": "node_transition",
+      "timestamp": "2026-06-12T14:00:00Z",
+      "durationMs": 12
+    },
+    {
+      "llm": "gpt-4o",
+      "type": "llm_call",
+      "timestamp": "2026-06-12T14:00:01Z",
+      "input": {
+        "system": "extract names",
+        "user": "text body"
+      },
+      "cost": 0.0012,
+      "output": "Output Example",
+      "inputTokens": 150,
+      "outputTokens": 45,
+      "durationMs": 1200
+    },
+    {
+      "tool": "postgres_query",
+      "type": "tool_result",
+      "timestamp": "2026-06-12T14:00:03Z",
+      "output": {"rows": 3},
+      "durationMs": 500
+    },
+    {
+      "node": "fallback_handler",
+      "type": "node_transition",
+      "timestamp": "2026-06-12T14:00:05Z",
+      "durationMs": 8
+    }
+  ]
+}
