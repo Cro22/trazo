@@ -9,7 +9,7 @@ type StepType string
 
 const (
 	StepTypeCallLLM        StepType = "llm_call"
-	StepTypeCallTool       StepType = "tool_call"
+	StepTypeToolCall       StepType = "tool_call"
 	StepTypeToolResult     StepType = "tool_result"
 	StepTypeNodeTransition StepType = "node_transition"
 )
