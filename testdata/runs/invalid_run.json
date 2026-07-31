@@ -1,0 +1,18 @@
+{
+  "id": "run-invalid-9f",
+  "agent": "",
+  "version": "1.2.0",
+  "startTime": "2026-06-12T14:00:00Z",
+  "endTime": "2026-06-12T14:00:05Z",
+  "steps": [
+    {
+      "type": "tool_call",
+      "timestamp": "2026-06-12T14:00:01Z",
+      "input": {"query": "SELECT 1"}
+    },
+    {
+      "type": "teleport",
+      "timestamp": "2026-06-12T14:00:02Z"
+    }
+  ]
+}

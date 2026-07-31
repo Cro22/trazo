@@ -51,6 +51,10 @@ func (r *Runner) Run(dir string) (*Response, error) {
 			evaluation.FileErrors = append(evaluation.FileErrors, FileError{File: file.Name(), Err: err})
 			continue
 		}
+		if err := run.Validate(); err != nil {
+			evaluation.FileErrors = append(evaluation.FileErrors, FileError{File: file.Name(), Err: err})
+			continue
+		}
 		for _, judge := range r.evals {
 			eval, err := judge.EvaluateRun(run)
 			if err != nil {

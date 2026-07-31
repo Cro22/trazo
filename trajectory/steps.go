@@ -34,7 +34,7 @@ type Step struct {
 	Cost         float64         `json:"cost,omitempty"`
 	InputTokens  int             `json:"inputTokens,omitempty"`
 	OutputTokens int             `json:"outputTokens,omitempty"`
-	DurationMs   int64           `json:"DurationMs"`
+	DurationMs   int64           `json:"durationMs"`
 	Error        string          `json:"error,omitempty"`
 }
 
