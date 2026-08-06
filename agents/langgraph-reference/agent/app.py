@@ -89,5 +89,21 @@ def run_triage(
 def _final_report(state: dict) -> str:
     for message in reversed(state.get("messages", [])):
         if isinstance(message, AIMessage) and not message.tool_calls and message.content:
-            return message.content if isinstance(message.content, str) else str(message.content)
+            return _text_of(message.content)
     return ""
+
+
+def _text_of(content: object) -> str:
+    """Flatten message content to plain text. Newer Gemini returns a list of
+    content blocks (dicts with a 'text' field); older/other models return a str."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, dict) and isinstance(block.get("text"), str):
+                parts.append(block["text"])
+            elif isinstance(block, str):
+                parts.append(block)
+        return "\n".join(parts)
+    return str(content)

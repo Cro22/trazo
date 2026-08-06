@@ -7,7 +7,9 @@ from typing import Optional
 
 from langchain_core.language_models import BaseChatModel
 
-DEFAULT_MODEL = "gemini-2.0-flash"
+# gemini-2.0-flash was retired by the API (404 NOT_FOUND); 2.5-flash is the
+# current cheap flash tier. Override with --model if you want another.
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 
 class MissingAPIKey(RuntimeError):
