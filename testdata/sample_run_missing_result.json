@@ -1,0 +1,22 @@
+{
+  "id": "run-timeout-404",
+  "agent": "data_extractor",
+  "version": "1.2.0",
+  "startTime": "2026-06-12T14:00:00Z",
+  "endTime": "2026-06-12T14:00:05Z",
+  "steps": [
+    {
+      "node": "start",
+      "type": "node_transition",
+      "timestamp": "2026-06-12T14:00:00Z",
+      "durationMs": 12
+    },
+    {
+      "tool": "postgres_query",
+      "type": "tool_call",
+      "timestamp": "2026-06-12T14:00:03Z",
+      "input": {"query": "SELECT id FROM users"},
+      "durationMs": 450
+    }
+  ]
+}
