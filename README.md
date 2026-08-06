@@ -41,6 +41,10 @@ go run ./cmd/trazo -dir ./testdata/runs          # human-readable
 go run ./cmd/trazo -dir ./testdata/runs -json    # machine-readable
 ```
 
+Output formats: `-format text` (default), `-format json` (or `-json`), and
+`-format md` for a Markdown report (verdict, severity counts, findings table),
+suitable for a CI job summary or PR comment.
+
 Exit codes: `0` clean, `1` at least one `bad` finding, `2` at least one file
 error (file errors take precedence). Note: `go run` remaps a non-zero program
 exit to its own `1`; build the binary to observe the true code in CI:
@@ -48,6 +52,15 @@ exit to its own `1`; build the binary to observe the true code in CI:
 ```bash
 go build -o trazo ./cmd/trazo && ./trazo -dir <dir> ; echo $?
 ```
+
+### Continuous integration
+
+`.github/workflows/ci.yml` builds and tests the Go core and the Python agent,
+then runs a `trazo-gate` job that demonstrates trazo gating a pipeline: it passes
+on a directory of clean traces (`testdata/ci/clean`, exit 0) and asserts that a
+directory with a bad finding (`testdata/ci/failing`) makes trazo exit non-zero.
+The Markdown report is written to the job summary. This is how trazo fails a
+build on a `JudgmentBad`.
 
 ## Reference agent (LangGraph)
 
