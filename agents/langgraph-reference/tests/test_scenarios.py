@@ -60,14 +60,21 @@ def test_orphan_scenario_drops_the_result(tmp_path) -> None:
 def test_runaway_loop_truncates_at_cap(tmp_path) -> None:
     steps = _steps(_run_scenario("runaway-loop", tmp_path))
     llm_calls = [s for s in steps if s["type"] == "llm_call"]
-    # iteration_cap is 3, so exactly three agent turns before the forced stop.
-    assert len(llm_calls) == 3
+    tool_calls = [s for s in steps if s["type"] == "tool_call"]
+    # iteration_cap is 5: five agent turns, four of which execute the tool before
+    # the forced stop, giving four identical calls for the loop detector.
+    assert len(llm_calls) == 5
+    assert len(tool_calls) == 4
 
 
 @pytest.mark.skipif(shutil.which("go") is None, reason="Go toolchain not available")
 @pytest.mark.parametrize(
     "name,judgment",
-    [("tool-error", "bad"), ("orphan-tool-call", "neutral")],
+    [
+        ("tool-error", "bad"),
+        ("orphan-tool-call", "neutral"),
+        ("runaway-loop", "bad"),  # now caught by the loop evaluator
+    ],
 )
 def test_scenarios_produce_expected_severity_in_go(tmp_path, name, judgment) -> None:
     result = _run_scenario(name, tmp_path)
@@ -77,5 +84,6 @@ def test_scenarios_produce_expected_severity_in_go(tmp_path, name, judgment) -> 
     )
     assert proc.stdout, proc.stderr
     out = json.loads(proc.stdout)
-    findings = next(e["findings"] for e in out["evaluations"] if e["runId"] == result.run_id)
+    # Aggregate findings across every evaluator for this run.
+    findings = [f for e in out["evaluations"] if e["runId"] == result.run_id for f in e["findings"]]
     assert any(f["judgment"] == judgment for f in findings), findings

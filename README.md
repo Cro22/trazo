@@ -20,11 +20,20 @@ Every finding carries one judgment (`evaluator/Evaluator.go`):
 
 - `trajectory/` — the `Run`/`Step` model, the JSON loader, and `Validate()`
   (structural invariants: ids, timestamps, per-type required fields).
-- `evaluator/` — the `Evaluator` interface and `ToolCallEvaluator`, which pairs
-  tool calls with results (by tool name, in order) and flags orphans and errors.
+- `evaluator/` — the `Evaluator` interface and the evaluators:
+  - `tool_calls` — pairs tool calls with results (by tool name, in order) and
+    flags orphans (neutral) and tool errors (bad).
+  - `loops` — flags repetition (same tool plus identical input, or same node)
+    at least `MaxRepeats` times; catches runaways the pairing check cannot see.
+  - `cost_latency` — flags per-step and whole-run cost/latency budget breaches
+    (neutral).
+  - `node_transitions` — flags runs that do not end at a terminal node (neutral).
+  - `llm_judge` — opt-in; grades the final output with a model (good/neutral/bad).
 - `runner/` — loads every `.json` file in a directory (concurrently, with
   deterministic output order) and runs the evaluators.
-- `cmd/trazo/` — the CLI.
+- `cmd/trazo/` — the CLI. Thresholds are overridable with flags
+  (`-max-repeats`, `-max-step-cost`, `-max-run-latency-ms`, `-terminal-nodes`,
+  ...); `-llm-judge` enables the judge (needs `GEMINI_API_KEY`).
 
 ```bash
 go build ./... && go test ./...
@@ -108,7 +117,7 @@ for the full matrix with the real Go runner output.
 ```powershell
 python -m agent run --repo any/repo --traces-dir ./_traces --scenario tool-error       # -> bad
 python -m agent run --repo any/repo --traces-dir ./_traces --scenario orphan-tool-call  # -> neutral
-python -m agent run --repo any/repo --traces-dir ./_traces --scenario runaway-loop      # -> loop truncated
+python -m agent run --repo any/repo --traces-dir ./_traces --scenario runaway-loop      # -> bad (loop detected)
 ```
 
 ### Docs

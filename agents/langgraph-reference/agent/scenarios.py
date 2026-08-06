@@ -105,7 +105,9 @@ def build_scenario(name: str, repo: str) -> ScenarioSetup:
             handler_factory=lambda rec, model: _DropFirstResultHandler(rec, model=model),
         )
     if name == "runaway-loop":
-        cap = 3
+        # cap 5 yields 4 identical fetch_issues calls, enough for LoopEvaluator
+        # (default threshold 3) to flag the loop the ToolCallEvaluator misses.
+        cap = 5
         return ScenarioSetup(
             # Every turn asks for a tool (distinct ids); the cap truncates the loop.
             llm=ScriptedChatModel(
