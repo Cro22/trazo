@@ -1,3 +1,8 @@
-# Runtime deps for the emitter: none (standard library only).
-# Test tooling only. LangGraph and the Gemini client arrive in M3.
+# Runtime deps for the agent (M3). The emitter itself is standard-library only.
+# GitHub access uses urllib (stdlib); no HTTP client dep.
+langgraph==1.2.10
+langchain-core==1.5.3
+langchain-google-genai==4.3.2
+
+# Test tooling.
 pytest==8.3.4
