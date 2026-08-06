@@ -1,0 +1,73 @@
+{
+  "id": "run-triage-demo-01",
+  "agent": "github-triage",
+  "version": "0.0.1",
+  "startTime": "2026-08-06T10:00:00Z",
+  "endTime": "2026-08-06T10:00:07Z",
+  "steps": [
+    {
+      "node": "start",
+      "type": "node_transition",
+      "timestamp": "2026-08-06T10:00:00Z",
+      "durationMs": 5
+    },
+    {
+      "llm": "gemini-2.0-flash",
+      "type": "llm_call",
+      "timestamp": "2026-08-06T10:00:01Z",
+      "input": {
+        "system": "You triage GitHub issues. Decide which tool to call.",
+        "user": "Triage the repository golang/example"
+      },
+      "output": "I will fetch the open issues first.",
+      "cost": 0.00004,
+      "inputTokens": 320,
+      "outputTokens": 24,
+      "durationMs": 900
+    },
+    {
+      "tool": "fetch_issues",
+      "type": "tool_call",
+      "timestamp": "2026-08-06T10:00:02Z",
+      "input": {
+        "repo": "golang/example",
+        "state": "open",
+        "limit": 5
+      },
+      "durationMs": 1300
+    },
+    {
+      "tool": "fetch_issues",
+      "type": "tool_result",
+      "timestamp": "2026-08-06T10:00:03Z",
+      "output": {
+        "count": 2,
+        "issues": [
+          {"number": 41, "title": "Typo in README", "labels": []},
+          {"number": 42, "title": "Build fails on Windows", "labels": ["bug"]}
+        ]
+      },
+      "durationMs": 1300
+    },
+    {
+      "llm": "gemini-2.0-flash",
+      "type": "llm_call",
+      "timestamp": "2026-08-06T10:00:04Z",
+      "input": {
+        "system": "You triage GitHub issues. Summarize the fetched issues.",
+        "user": "2 open issues fetched"
+      },
+      "output": "1 bug (build failure on Windows, high priority) and 1 documentation typo (low priority).",
+      "cost": 0.00006,
+      "inputTokens": 410,
+      "outputTokens": 52,
+      "durationMs": 1100
+    },
+    {
+      "node": "end",
+      "type": "node_transition",
+      "timestamp": "2026-08-06T10:00:06Z",
+      "durationMs": 4
+    }
+  ]
+}

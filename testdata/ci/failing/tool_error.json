@@ -1,0 +1,35 @@
+{
+  "id": "ci-failing-tool-error",
+  "agent": "github-triage",
+  "version": "0.0.1",
+  "startTime": "2026-08-06T10:00:00Z",
+  "endTime": "2026-08-06T10:00:03Z",
+  "steps": [
+    {
+      "node": "start",
+      "type": "node_transition",
+      "timestamp": "2026-08-06T10:00:00Z",
+      "durationMs": 5
+    },
+    {
+      "tool": "fetch_issues",
+      "type": "tool_call",
+      "timestamp": "2026-08-06T10:00:01Z",
+      "input": {"repo": "golang/example"},
+      "durationMs": 200
+    },
+    {
+      "tool": "fetch_issues",
+      "type": "tool_result",
+      "timestamp": "2026-08-06T10:00:02Z",
+      "durationMs": 200,
+      "error": "rate limited: 403 Forbidden"
+    },
+    {
+      "node": "end",
+      "type": "node_transition",
+      "timestamp": "2026-08-06T10:00:03Z",
+      "durationMs": 4
+    }
+  ]
+}
