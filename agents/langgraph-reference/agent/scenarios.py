@@ -16,8 +16,6 @@ from dataclasses import dataclass
 from typing import Optional
 from uuid import UUID
 
-from langchain_core.callbacks import BaseCallbackHandler
-
 from .app import HandlerFactory
 from .github import GitHubError, Issue, IssueSource
 from .scripted import ScriptedChatModel, tool_call_message
