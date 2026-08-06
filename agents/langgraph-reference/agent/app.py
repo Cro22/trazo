@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, Union
 
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -19,6 +20,14 @@ from .graph import DEFAULT_ITERATION_CAP, SYSTEM_PROMPT, build_agent
 from .tools import build_tools
 from .tracing import TracingCallbackHandler
 from trazo_emitter import TraceRecorder
+
+# Builds the callback handler that records steps. Injectable so scenarios (M4)
+# can swap in a handler that drops a result to simulate lost instrumentation.
+HandlerFactory = Callable[[TraceRecorder, str], BaseCallbackHandler]
+
+
+def _default_handler(recorder: TraceRecorder, model: str) -> BaseCallbackHandler:
+    return TracingCallbackHandler(recorder, model=model)
 
 AGENT_NAME = "github-triage"
 AGENT_VERSION = "0.0.1"
@@ -42,13 +51,14 @@ def run_triage(
     run_id: str,
     iteration_cap: int = DEFAULT_ITERATION_CAP,
     clock: Optional[Callable[[], datetime]] = None,
+    handler_factory: Optional[HandlerFactory] = None,
 ) -> TriageResult:
     recorder = TraceRecorder(run_id, AGENT_NAME, AGENT_VERSION, clock=clock)
     recorder.record_node_transition("start")
 
     tools = build_tools(source)
     agent = build_agent(llm, tools, iteration_cap=iteration_cap)
-    handler = TracingCallbackHandler(recorder, model=model)
+    handler = (handler_factory or _default_handler)(recorder, model)
 
     config = {
         "configurable": {"thread_id": run_id},

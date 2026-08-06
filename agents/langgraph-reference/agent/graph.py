@@ -63,7 +63,10 @@ def build_agent(
 
     graph = StateGraph(TriageState)
     graph.add_node("agent", agent_node)
-    graph.add_node("tools", ToolNode(list(tools)))
+    # handle_tool_errors=True turns a raised tool error into a ToolMessage so the
+    # agent can handle it and the graph keeps running; on_tool_error still fires,
+    # so the trace records the errored tool_result.
+    graph.add_node("tools", ToolNode(list(tools), handle_tool_errors=True))
     graph.add_edge(START, "agent")
     graph.add_conditional_edges("agent", route, {"tools": "tools", END: END})
     graph.add_edge("tools", "agent")
