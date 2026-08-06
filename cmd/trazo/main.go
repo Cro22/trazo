@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Cro22/trazo/evaluator"
+	"github.com/Cro22/trazo/report"
 	"github.com/Cro22/trazo/runner"
 )
 
@@ -33,7 +34,8 @@ type responseJSON struct {
 
 func main() {
 	dir := flag.String("dir", "./testdata/runs", "directory containing run JSON files")
-	asJSON := flag.Bool("json", false, "print results as JSON")
+	asJSON := flag.Bool("json", false, "print results as JSON (alias for -format json)")
+	format := flag.String("format", "text", "output format: text, json, or md")
 
 	maxRepeats := flag.Int("max-repeats", evaluator.DefaultMaxRepeats, "loops: identical tool/node repeats before flagging")
 	maxStepCost := flag.Float64("max-step-cost", evaluator.DefaultMaxStepCost, "cost: max USD per step")
@@ -69,10 +71,19 @@ func main() {
 		log.Fatalf("Error running: %v", err)
 	}
 
+	out := *format
 	if *asJSON {
+		out = "json"
+	}
+	switch out {
+	case "json":
 		printJSON(resp)
-	} else {
+	case "md", "markdown":
+		fmt.Print(report.Markdown(resp))
+	case "text":
 		printText(resp)
+	default:
+		log.Fatalf("unknown -format %q (want text, json, or md)", out)
 	}
 
 	os.Exit(exitCode(resp))
