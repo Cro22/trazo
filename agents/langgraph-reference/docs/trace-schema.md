@@ -168,10 +168,13 @@ go run ./cmd/trazo -dir ./agents/langgraph-reference/docs
 Expected output:
 
 ```
-RunID run-triage-demo-01. Findings: 0 Evaluator: tool_calls
+run-triage-demo-01 (github-triage)  clean
+
+Summary: 1 run, 0 bad, 0 neutral, 0 good, 0 file errors
 ```
 
-Add `-json` for machine-readable output.
+Add `-json` for machine-readable output, or `-validate` for a structure-only
+pass that skips the evaluators.
 
 ### Exit codes
 

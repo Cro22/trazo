@@ -1,8 +1,11 @@
-RunID run-1. Findings: 2 Evaluator: tool_calls
-Step 3: Comment: tool postgres_query fails: connection refused, Score: 0.000000, Judgment: bad
-Step 2: Comment: tool_call postgres_query has no matching result, Score: 0.000000, Judgment: neutral
-RunID run-1. Findings: 1 Evaluator: cost_latency
-Step -1: Comment: run cost 1.50 over budget|limit
-second line, Score: 1.500000, Judgment: neutral
-RunID run-ok. Findings: 0 Evaluator: tool_calls
-File Error: broken.json → unexpected end of JSON input
+run-1 (data_extractor)
+  [BAD]      step 3  tool_calls    tool postgres_query fails: connection refused
+  [NEUTRAL]  step 2  tool_calls    tool_call postgres_query has no matching result
+  [NEUTRAL]  run     cost_latency  run cost 1.50 over budget|limit; second line
+
+run-ok (data_extractor)  clean
+
+Summary: 2 runs, 1 bad, 2 neutral, 0 good, 1 file error
+
+File errors:
+  broken.json: unexpected end of JSON input

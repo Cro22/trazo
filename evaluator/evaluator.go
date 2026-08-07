@@ -31,9 +31,13 @@ const (
 )
 
 type Evaluation struct {
-	EvaluatorName string    `json:"evaluatorName"`
-	RunID         string    `json:"runId"`
-	Findings      []Finding `json:"findings"`
+	EvaluatorName string `json:"evaluatorName"`
+	RunID         string `json:"runId"`
+	// Agent is the logical agent name of the run, copied from the trace by the
+	// runner for human-facing output. It is not serialized (json:"-") so the
+	// machine-readable JSON output stays keyed on runId alone.
+	Agent    string    `json:"-"`
+	Findings []Finding `json:"findings"`
 }
 
 type Finding struct {

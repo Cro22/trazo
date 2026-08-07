@@ -156,6 +156,8 @@ func (r *Runner) processFile(ctx context.Context, path string) fileResult {
 			res.errs = append(res.errs, FileError{File: path, Err: err})
 			continue
 		}
+		// Carry the agent name for human-facing output; evaluators only set RunID.
+		eval.Agent = run.Agent
 		res.evals = append(res.evals, eval)
 	}
 	return res

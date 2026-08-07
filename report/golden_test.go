@@ -29,6 +29,7 @@ func goldenFixture() *runner.Response {
 			{
 				EvaluatorName: "tool_calls",
 				RunID:         "run-1",
+				Agent:         "data_extractor",
 				Findings: []evaluator.Finding{
 					{StepIndex: 3, Judgment: evaluator.JudgmentBad, Comment: "tool postgres_query fails: connection refused"},
 					{StepIndex: 2, Judgment: evaluator.JudgmentNeutral, Comment: "tool_call postgres_query has no matching result"},
@@ -37,6 +38,7 @@ func goldenFixture() *runner.Response {
 			{
 				EvaluatorName: "cost_latency",
 				RunID:         "run-1",
+				Agent:         "data_extractor",
 				Findings: []evaluator.Finding{
 					{StepIndex: -1, Judgment: evaluator.JudgmentNeutral, Score: 1.5, Comment: "run cost 1.50 over budget|limit\nsecond line"},
 				},
@@ -44,6 +46,7 @@ func goldenFixture() *runner.Response {
 			{
 				EvaluatorName: "tool_calls",
 				RunID:         "run-ok",
+				Agent:         "data_extractor",
 				Findings:      []evaluator.Finding{},
 			},
 		},
