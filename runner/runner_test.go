@@ -27,15 +27,66 @@ func TestRunner_Run(t *testing.T) {
 	}
 
 	// broken.json is malformed and invalid_run.json fails Validate => both land
-	// in FileErrors, not aborting the batch. ReadDir returns names sorted.
+	// in FileErrors, not aborting the batch. ReadDir returns names sorted, and
+	// FileError.File carries the path as read (joined with the input dir).
 	if len(resp.FileErrors) != 2 {
 		t.Fatalf("expected 2 file errors, got %d", len(resp.FileErrors))
 	}
-	if resp.FileErrors[0].File != "broken.json" {
-		t.Errorf("expected first file error on broken.json, got %s", resp.FileErrors[0].File)
+	wantBroken := filepath.Join("../testdata/runs", "broken.json")
+	wantInvalid := filepath.Join("../testdata/runs", "invalid_run.json")
+	if resp.FileErrors[0].File != wantBroken {
+		t.Errorf("expected first file error on %s, got %s", wantBroken, resp.FileErrors[0].File)
 	}
-	if resp.FileErrors[1].File != "invalid_run.json" {
-		t.Errorf("expected second file error on invalid_run.json, got %s", resp.FileErrors[1].File)
+	if resp.FileErrors[1].File != wantInvalid {
+		t.Errorf("expected second file error on %s, got %s", wantInvalid, resp.FileErrors[1].File)
+	}
+}
+
+func TestCollectFiles_NonRecursiveSkipsSubdirs(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "a.json"), "{}")
+	writeFile(t, filepath.Join(dir, "notes.txt"), "ignore me")
+	sub := filepath.Join(dir, "nested")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, filepath.Join(sub, "b.json"), "{}")
+
+	files, err := CollectFiles(dir, false)
+	if err != nil {
+		t.Fatalf("CollectFiles: %v", err)
+	}
+	if len(files) != 1 || files[0] != filepath.Join(dir, "a.json") {
+		t.Fatalf("non-recursive should return only a.json, got %v", files)
+	}
+}
+
+func TestCollectFiles_RecursiveDescends(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "a.json"), "{}")
+	sub := filepath.Join(dir, "nested")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, filepath.Join(sub, "b.json"), "{}")
+
+	files, err := CollectFiles(dir, true)
+	if err != nil {
+		t.Fatalf("CollectFiles: %v", err)
+	}
+	if len(files) != 2 {
+		t.Fatalf("recursive should find both files, got %v", files)
+	}
+	// WalkDir yields lexical order: the top-level a.json before nested/b.json.
+	if files[0] != filepath.Join(dir, "a.json") || files[1] != filepath.Join(sub, "b.json") {
+		t.Fatalf("recursive order unexpected: %v", files)
+	}
+}
+
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
 	}
 }
 

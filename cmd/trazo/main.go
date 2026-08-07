@@ -24,7 +24,12 @@ const (
 )
 
 func main() {
-	dir := flag.String("dir", "./testdata/runs", "directory containing run JSON files")
+	log.SetFlags(0)
+	log.SetPrefix("trazo: ")
+
+	dir := flag.String("dir", "./testdata/runs", "directory of traces to scan when no PATH is given")
+	recursive := flag.Bool("recursive", false, "descend into subdirectories when PATH is a directory")
+	validate := flag.Bool("validate", false, "only check that traces load and pass structural validation; skip evaluators")
 	asJSON := flag.Bool("json", false, "print results as JSON (alias for -format json)")
 	format := flag.String("format", "text", "output format: text, json, or md")
 
@@ -35,58 +40,140 @@ func main() {
 	maxRunLatencyMs := flag.Int64("max-run-latency-ms", evaluator.DefaultMaxRunLatencyMs, "latency: max ms per run")
 	terminalNodes := flag.String("terminal-nodes", "", "node: comma-separated terminal node names (default end,__end__,finish,done)")
 	llmJudge := flag.Bool("llm-judge", false, "enable the LLM-as-judge evaluator (needs GEMINI_API_KEY)")
-	judgeModel := flag.String("judge-model", evaluator.DefaultJudgeModel, "model for --llm-judge")
+	judgeModel := flag.String("judge-model", evaluator.DefaultJudgeModel, "model for -llm-judge")
+
+	flag.Usage = usage
 	flag.Parse()
 
-	evaluators := []evaluator.Evaluator{
-		&evaluator.ToolCallEvaluator{},
-		&evaluator.LoopEvaluator{MaxRepeats: *maxRepeats},
-		&evaluator.CostLatencyEvaluator{
-			MaxStepCost:      *maxStepCost,
-			MaxStepLatencyMs: *maxStepLatencyMs,
-			MaxRunCost:       *maxRunCost,
-			MaxRunLatencyMs:  *maxRunLatencyMs,
-		},
-		&evaluator.NodeTransitionEvaluator{TerminalNodes: splitCSV(*terminalNodes)},
-	}
-	if *llmJudge {
-		client, err := evaluator.NewGeminiClient(*judgeModel)
-		if err != nil {
-			log.Fatalf("llm-judge: %v", err)
-		}
-		evaluators = append(evaluators, &evaluator.LLMJudgeEvaluator{Client: client})
-	}
-
-	// Cancel in-flight evaluation on Ctrl+C (SIGINT) or SIGTERM so a long run,
-	// notably one using the network-bound LLM judge, stops promptly.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
-	resp, err := runner.NewRunner(evaluators).Run(ctx, *dir)
-	if err != nil {
-		log.Fatalf("Error running: %v", err)
+	if flag.NArg() > 1 {
+		log.Printf("at most one PATH may be given, got %d", flag.NArg())
+		flag.Usage()
+		os.Exit(exitFileError)
 	}
 
 	out := *format
 	if *asJSON {
 		out = "json"
 	}
+	if out != "text" && out != "json" && out != "md" && out != "markdown" {
+		log.Fatalf("unknown -format %q (want text, json, or md)", out)
+	}
+
+	// PATH (positional) takes precedence over -dir; -dir is the fallback default.
+	path := *dir
+	if flag.NArg() == 1 {
+		path = flag.Arg(0)
+	}
+
+	files, err := resolveFiles(path, *recursive)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	if len(files) == 0 {
+		log.Printf("no .json traces found under %q", path)
+	}
+
+	evaluators := buildEvaluators(*validate, evaluatorConfig{
+		maxRepeats:       *maxRepeats,
+		maxStepCost:      *maxStepCost,
+		maxStepLatencyMs: *maxStepLatencyMs,
+		maxRunCost:       *maxRunCost,
+		maxRunLatencyMs:  *maxRunLatencyMs,
+		terminalNodes:    splitCSV(*terminalNodes),
+		llmJudge:         *llmJudge,
+		judgeModel:       *judgeModel,
+	})
+
+	// Cancel in-flight evaluation on Ctrl+C (SIGINT) or SIGTERM so a long run,
+	// notably one using the network-bound LLM judge, stops promptly.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	resp := runner.NewRunner(evaluators).RunFiles(ctx, files)
+
+	render(out, *validate, resp, len(files))
+	os.Exit(exitCode(resp))
+}
+
+func usage() {
+	w := flag.CommandLine.Output()
+	fmt.Fprintf(w, "trazo evaluates agent trace files (trazo JSON format) and reports findings.\n\n")
+	fmt.Fprintf(w, "Usage:\n  trazo [flags] [PATH]\n\n")
+	fmt.Fprintf(w, "PATH is a single trace file or a directory of .json traces. If omitted, -dir is scanned.\n\n")
+	fmt.Fprintf(w, "Flags:\n")
+	flag.PrintDefaults()
+	fmt.Fprintf(w, "\nExit codes: 0 clean, 1 a bad finding, 2 a file error or invalid trace.\n")
+}
+
+// resolveFiles turns a PATH into the concrete list of trace files to evaluate: a
+// single file is used as-is, a directory is scanned (recursively when asked).
+func resolveFiles(path string, recursive bool) ([]string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.IsDir() {
+		return runner.CollectFiles(path, recursive)
+	}
+	return []string{path}, nil
+}
+
+func render(out string, validate bool, resp *runner.Response, total int) {
 	switch out {
 	case "json":
 		s, err := report.JSON(resp)
 		if err != nil {
-			log.Fatalf("Error encoding JSON: %v", err)
+			log.Fatalf("encoding JSON: %v", err)
 		}
 		fmt.Println(s)
 	case "md", "markdown":
 		fmt.Print(report.Markdown(resp))
-	case "text":
-		fmt.Print(report.Text(resp))
-	default:
-		log.Fatalf("unknown -format %q (want text, json, or md)", out)
+	default: // text
+		if validate {
+			fmt.Print(report.ValidateSummary(resp, total))
+		} else {
+			fmt.Print(report.Text(resp))
+		}
 	}
+}
 
-	os.Exit(exitCode(resp))
+type evaluatorConfig struct {
+	maxRepeats       int
+	maxStepCost      float64
+	maxStepLatencyMs int64
+	maxRunCost       float64
+	maxRunLatencyMs  int64
+	terminalNodes    []string
+	llmJudge         bool
+	judgeModel       string
+}
+
+// buildEvaluators assembles the evaluator set. In validate-only mode it returns
+// none, so the runner just loads and structurally validates each file. The LLM
+// judge is opt-in and constructed last because it can fail (missing API key).
+func buildEvaluators(validate bool, cfg evaluatorConfig) []evaluator.Evaluator {
+	if validate {
+		return nil
+	}
+	evaluators := []evaluator.Evaluator{
+		&evaluator.ToolCallEvaluator{},
+		&evaluator.LoopEvaluator{MaxRepeats: cfg.maxRepeats},
+		&evaluator.CostLatencyEvaluator{
+			MaxStepCost:      cfg.maxStepCost,
+			MaxStepLatencyMs: cfg.maxStepLatencyMs,
+			MaxRunCost:       cfg.maxRunCost,
+			MaxRunLatencyMs:  cfg.maxRunLatencyMs,
+		},
+		&evaluator.NodeTransitionEvaluator{TerminalNodes: cfg.terminalNodes},
+	}
+	if cfg.llmJudge {
+		client, err := evaluator.NewGeminiClient(cfg.judgeModel)
+		if err != nil {
+			log.Fatalf("llm-judge: %v", err)
+		}
+		evaluators = append(evaluators, &evaluator.LLMJudgeEvaluator{Client: client})
+	}
+	return evaluators
 }
 
 // splitCSV parses a comma-separated flag value into a trimmed, non-empty slice,
