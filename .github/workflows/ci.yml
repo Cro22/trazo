@@ -58,7 +58,11 @@ jobs:
       - name: Gate catches JudgmentBad
         run: |
           echo "## trazo gate: failing traces" >> "$GITHUB_STEP_SUMMARY"
-          ./trazo -dir testdata/ci/failing -format md >> "$GITHUB_STEP_SUMMARY"
+          # This dump is expected to exit non-zero (there is a bad finding); it is
+          # only for the report, so do not let set -e abort the step here.
+          ./trazo -dir testdata/ci/failing -format md >> "$GITHUB_STEP_SUMMARY" || true
+          # The real assertion: trazo must exit non-zero on the bad traces. The
+          # if-condition is exempt from set -e, so a non-zero exit takes the else.
           if ./trazo -dir testdata/ci/failing; then
             echo "::error::trazo gate did not fail on a bad finding"
             exit 1
