@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Cro22/trazo/trajectory/trace.schema.json",
+  "title": "Trazo trace",
+  "description": "One agent run per file, as a single JSON object. The source of truth for this format is the Go code (trajectory/steps.go for the shape, trajectory/validate.go for the acceptance gate); this schema is the derived, strict external contract. It is deliberately stricter than the Go loader in one way: the loader ignores unknown fields, this schema forbids them (additionalProperties: false). Some invariants that Run.Validate enforces are cross-field and cannot be expressed in JSON Schema, so they are Go-only: endTime not before startTime, step timestamps monotonic non-decreasing, and every step timestamp within [startTime, endTime]. A document that passes this schema still has to pass Run.Validate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "agent", "startTime", "endTime"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Run identifier. Non-empty. Surfaces as runId in evaluator output."
+    },
+    "agent": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Logical agent name. Non-empty."
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema/trace version. Not enforced by Run.Validate, but present in every emitted trace by convention; include it."
+    },
+    "startTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp. Must be present and non-zero."
+    },
+    "endTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp. Must be present, non-zero, and not before startTime (cross-field check enforced by Go)."
+    },
+    "steps": {
+      "type": "array",
+      "description": "Ordered steps of the run. May be empty (a run with no steps passes validation but has nothing to evaluate). An absent steps field deserializes to an empty slice in Go.",
+      "items": {"$ref": "#/$defs/step"}
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "timestamp"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["llm_call", "tool_call", "tool_result", "node_transition"],
+          "description": "Discriminates the step. Each value requires its own field (see allOf below)."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "RFC3339 timestamp. Required and non-zero for every step."
+        },
+        "llm": {
+          "type": "string",
+          "description": "Model identifier. Required (non-empty) when type is llm_call; omit otherwise."
+        },
+        "tool": {
+          "type": "string",
+          "description": "Tool name. Required (non-empty) when type is tool_call or tool_result. Fallback pairing key when toolCallId is absent."
+        },
+        "toolCallId": {
+          "type": "string",
+          "description": "Correlates a tool_result with its tool_call. Authoritative for pairing when present, in which case no name/order fallback is used."
+        },
+        "node": {
+          "type": "string",
+          "description": "Graph node name. Required (non-empty) when type is node_transition."
+        },
+        "input": {
+          "description": "Opaque payload. Any JSON value; the core stores it verbatim and never parses it."
+        },
+        "output": {
+          "description": "Opaque payload. Any JSON value; the core stores it verbatim and never parses it."
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0,
+          "description": "USD cost of the step. Non-negative. Omitted when zero."
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Prompt tokens. Non-negative. Omitted when zero."
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Completion tokens. Non-negative. Omitted when zero."
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Step duration in milliseconds. Non-negative. Serialized on every step, including zero."
+        },
+        "error": {
+          "type": "string",
+          "description": "Non-empty means the step failed. On a tool_result it drives a bad finding."
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "llm_call"}}, "required": ["type"]},
+          "then": {"required": ["llm"], "properties": {"llm": {"minLength": 1}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "tool_call"}}, "required": ["type"]},
+          "then": {"required": ["tool"], "properties": {"tool": {"minLength": 1}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "tool_result"}}, "required": ["type"]},
+          "then": {"required": ["tool"], "properties": {"tool": {"minLength": 1}}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "node_transition"}}, "required": ["type"]},
+          "then": {"required": ["node"], "properties": {"node": {"minLength": 1}}}
+        }
+      ]
+    }
+  }
+}

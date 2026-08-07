@@ -11,6 +11,34 @@ description of the Go code, not a new contract. The source of truth is:
 If any statement here disagrees with the Go code, the Go code wins. Verified
 against the repo at commit level of branch `feature/0.0.1`.
 
+## Machine-readable schema
+
+A JSON Schema (draft 2020-12) mirrors this document at
+[`trajectory/trace.schema.json`](../../../trajectory/trace.schema.json). It is
+derived from the Go types, not a competing source of truth: a Go test
+(`trajectory/schema_test.go`) fails the build if the schema's step-type `enum` or
+per-type required fields drift from the `trajectory` constants, and a Python test
+(`tests/test_schema.py`) validates every committed fixture and the emitter output
+against it.
+
+Two intentional gaps between the schema and `Run.Validate`:
+
+- The schema is **stricter** on unknown fields: it sets `additionalProperties:
+  false`, while the Go loader ignores unknown fields. The schema defines the
+  intended contract; the loader is lenient.
+- The schema is **weaker** on cross-field temporal invariants: `endTime` not
+  before `startTime`, monotonic step timestamps, and steps within
+  `[startTime, endTime]` cannot be expressed in JSON Schema and are enforced only
+  by `Run.Validate` in Go. Passing the schema does not exempt a trace from
+  `Run.Validate`.
+
+Validate a file against it with any draft 2020-12 validator, e.g. from the
+Python side:
+
+```bash
+python -c "import json,jsonschema; s=json.load(open('trajectory/trace.schema.json')); jsonschema.validate(json.load(open('agents/langgraph-reference/docs/sample-trace.json')), s)"
+```
+
 ## File layout
 
 - One run per file. One JSON object at the top level.

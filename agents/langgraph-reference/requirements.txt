@@ -6,3 +6,5 @@ langchain-google-genai==4.3.2
 
 # Test tooling.
 pytest==8.3.4
+# Validates emitter output and fixtures against trajectory/trace.schema.json.
+jsonschema==4.26.0
