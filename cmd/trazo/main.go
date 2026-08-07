@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -23,16 +22,6 @@ const (
 	exitBad       = 1
 	exitFileError = 2
 )
-
-type fileErrorJSON struct {
-	File  string `json:"file"`
-	Error string `json:"error"`
-}
-
-type responseJSON struct {
-	Evaluations []*evaluator.Evaluation `json:"evaluations"`
-	FileErrors  []fileErrorJSON         `json:"fileErrors"`
-}
 
 func main() {
 	dir := flag.String("dir", "./testdata/runs", "directory containing run JSON files")
@@ -84,48 +73,20 @@ func main() {
 	}
 	switch out {
 	case "json":
-		printJSON(resp)
+		s, err := report.JSON(resp)
+		if err != nil {
+			log.Fatalf("Error encoding JSON: %v", err)
+		}
+		fmt.Println(s)
 	case "md", "markdown":
 		fmt.Print(report.Markdown(resp))
 	case "text":
-		printText(resp)
+		fmt.Print(report.Text(resp))
 	default:
 		log.Fatalf("unknown -format %q (want text, json, or md)", out)
 	}
 
 	os.Exit(exitCode(resp))
-}
-
-func printText(resp *runner.Response) {
-	for _, findings := range resp.Evaluations {
-		fmt.Printf("RunID %s. Findings: %d Evaluator: %s\n", findings.RunID, len(findings.Findings), findings.EvaluatorName)
-		for _, s := range findings.Findings {
-			fmt.Printf("Step %d: Comment: %s, Score: %f, Judgment: %s\n", s.StepIndex, s.Comment, s.Score, s.Judgment)
-		}
-	}
-
-	for _, fe := range resp.FileErrors {
-		fmt.Printf("File Error: %s → %v\n", fe.File, fe.Err)
-	}
-}
-
-func printJSON(resp *runner.Response) {
-	out := responseJSON{
-		Evaluations: resp.Evaluations,
-		FileErrors:  []fileErrorJSON{},
-	}
-	if out.Evaluations == nil {
-		out.Evaluations = []*evaluator.Evaluation{}
-	}
-	for _, fe := range resp.FileErrors {
-		out.FileErrors = append(out.FileErrors, fileErrorJSON{File: fe.File, Error: fe.Err.Error()})
-	}
-
-	data, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
-		log.Fatalf("Error encoding JSON: %v", err)
-	}
-	fmt.Println(string(data))
 }
 
 // splitCSV parses a comma-separated flag value into a trimmed, non-empty slice,

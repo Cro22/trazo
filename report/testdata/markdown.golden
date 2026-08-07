@@ -1,0 +1,20 @@
+# trazo evaluation report
+
+**Verdict: FAIL**
+
+- Evaluations: 3
+- Findings: 3 (bad 1, neutral 2, good 0)
+- File errors: 1
+
+## Findings
+
+| Run | Evaluator | Step | Severity | Comment |
+|-----|-----------|------|----------|---------|
+| run-1 | tool_calls | 3 | bad | tool postgres_query fails: connection refused |
+| run-1 | tool_calls | 2 | neutral | tool_call postgres_query has no matching result |
+| run-1 | cost_latency | run | neutral | run cost 1.50 over budget\|limit; second line |
+
+## File errors
+
+- `broken.json`: unexpected end of JSON input
+
