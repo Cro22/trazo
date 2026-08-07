@@ -8,10 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/Cro22/trazo/evaluator"
 	"github.com/Cro22/trazo/report"
 	"github.com/Cro22/trazo/runner"
+	"github.com/Cro22/trazo/trajectory"
 )
 
 // Exit codes: 0 clean, 1 at least one JudgmentBad finding, 2 at least one
@@ -104,7 +106,13 @@ func main() {
 
 	resp := runner.NewRunner(evaluators).RunFiles(ctx, files)
 
-	render(out, *validate, resp, len(files))
+	meta := report.Meta{
+		TrazoVersion:       Version,
+		TraceSchemaVersion: trajectory.SchemaVersion,
+		Files:              len(files),
+		GeneratedAt:        time.Now(),
+	}
+	render(out, *validate, resp, meta)
 	os.Exit(exitCode(resp))
 }
 
@@ -131,10 +139,10 @@ func resolveFiles(path string, recursive bool) ([]string, error) {
 	return []string{path}, nil
 }
 
-func render(out string, validate bool, resp *runner.Response, total int) {
+func render(out string, validate bool, resp *runner.Response, meta report.Meta) {
 	switch out {
 	case "json":
-		s, err := report.JSON(resp)
+		s, err := report.JSON(resp, meta)
 		if err != nil {
 			log.Fatalf("encoding JSON: %v", err)
 		}
@@ -143,7 +151,7 @@ func render(out string, validate bool, resp *runner.Response, total int) {
 		fmt.Print(report.Markdown(resp))
 	default: // text
 		if validate {
-			fmt.Print(report.ValidateSummary(resp, total))
+			fmt.Print(report.ValidateSummary(resp, meta.Files))
 		} else {
 			fmt.Print(report.Text(resp))
 		}

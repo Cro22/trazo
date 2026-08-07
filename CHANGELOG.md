@@ -15,7 +15,17 @@ product version. The trace **schema** version is tracked separately; see
   and build metadata come from the Go toolchain's build info (no ldflags needed).
 - [docs/versioning.md](docs/versioning.md): the product and schema versioning
   policy, the schema compatibility contract, and the release process.
+- Versioned, self-describing JSON output: `-format json` now emits an envelope
+  with `outputVersion`, `trazoVersion`, `traceSchemaVersion`, `generatedAt`, an
+  aggregate `summary`, `results`, and structured `errors`. Documented in
+  [docs/output.md](docs/output.md).
 - This changelog.
+
+### Changed
+
+- BREAKING (JSON output): the top-level keys `evaluations` and `fileErrors` are
+  now `results` and `errors`, nested under the new envelope. Consumers should
+  read `outputVersion` and ignore unknown fields.
 
 ## [0.1.0]
 

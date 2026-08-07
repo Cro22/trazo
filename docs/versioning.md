@@ -59,7 +59,7 @@ The product version bumps on user-visible changes to the CLI or library:
   machine-readable output contract.
 
 The machine-readable JSON output is a contract in its own right and carries its
-own `schemaVersion` field; see the output section of the README once published.
+own `outputVersion` field; see [output.md](output.md).
 
 ## Release process
 
