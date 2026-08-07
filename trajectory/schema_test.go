@@ -8,8 +8,15 @@ import (
 )
 
 // schemaDoc captures only the parts of trace.schema.json this test asserts on:
-// the step type enum and the per-type required-field rules encoded as if/then.
+// the top-level required fields and version pattern, the step type enum, and the
+// per-type required-field rules encoded as if/then.
 type schemaDoc struct {
+	Required   []string `json:"required"`
+	Properties struct {
+		Version struct {
+			Pattern string `json:"pattern"`
+		} `json:"version"`
+	} `json:"properties"`
 	Defs struct {
 		Step struct {
 			Properties struct {
@@ -44,6 +51,31 @@ func loadSchemaDoc(t *testing.T) schemaDoc {
 		t.Fatalf("parse trace.schema.json: %v", err)
 	}
 	return doc
+}
+
+// TestSchemaRequiresVersion guards that the published schema requires the version
+// field (with a semver pattern) and that the canonical SchemaVersion both matches
+// that pattern and passes the Go compatibility gate. This keeps the schema, the
+// SchemaVersion constant, and checkVersion from drifting apart.
+func TestSchemaRequiresVersion(t *testing.T) {
+	doc := loadSchemaDoc(t)
+
+	found := false
+	for _, r := range doc.Required {
+		if r == "version" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("schema top-level required must include \"version\", got %v", doc.Required)
+	}
+	if doc.Properties.Version.Pattern == "" {
+		t.Error("schema version property must declare a semver pattern")
+	}
+	if err := checkVersion(SchemaVersion); err != nil {
+		t.Errorf("canonical SchemaVersion %q must pass checkVersion: %v", SchemaVersion, err)
+	}
 }
 
 // TestSchemaTypeEnumMatchesConstants guards against the published schema drifting

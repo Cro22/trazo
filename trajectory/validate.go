@@ -12,11 +12,11 @@ import (
 // of evaluators.
 //
 // Strictness policy: hard invariants (non-negative quantities, monotonic step
-// timestamps, steps within the run interval) reject the trace. Optional fields
-// are validated only when present: an absent version or an empty step list is
-// accepted, since older emitters produced such traces and they carry no
-// ambiguity. Schema-version compatibility is a separate concern (see the
-// schema doc), not enforced here.
+// timestamps, steps within the run interval) reject the trace. The version is
+// required and must be semver-compatible with this build's supported major (see
+// checkVersion); this is the schema-compatibility gate. An empty step list is
+// still accepted, since a run with no steps carries no ambiguity, only nothing
+// to evaluate.
 func (r *Run) Validate() error {
 	var errs []error
 
@@ -25,6 +25,9 @@ func (r *Run) Validate() error {
 	}
 	if r.Agent == "" {
 		errs = append(errs, errors.New("run: agent is empty"))
+	}
+	if err := checkVersion(r.Version); err != nil {
+		errs = append(errs, err)
 	}
 	if r.StartTime.IsZero() {
 		errs = append(errs, errors.New("run: startTime is missing"))

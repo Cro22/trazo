@@ -55,13 +55,12 @@ The top-level object deserializes into `trajectory.Run`.
 |-------------|-------------|----------|-------|
 | `id`        | string      | yes      | Non-empty. Used as `runId` in evaluator output. |
 | `agent`     | string      | yes      | Non-empty. Logical agent name. |
-| `version`   | string      | no*      | Not checked by `Validate`, but present in every fixture. Treat as required by convention. |
+| `version`   | string      | yes      | Semver `MAJOR.MINOR.PATCH`. Required and gated for compatibility; see [Versioning](#versioning). |
 | `startTime` | RFC3339 time| yes      | Must be non-zero. |
 | `endTime`   | RFC3339 time| yes      | Must be non-zero and not before `startTime`. |
-| `steps`     | array<Step> | yes**    | May be empty and still pass `Validate`, but a run with no steps has nothing to evaluate. |
+| `steps`     | array<Step> | yes*     | May be empty and still pass `Validate`, but a run with no steps has nothing to evaluate. |
 
-\* Not enforced by `Validate`; include it anyway.
-\** An absent `steps` deserializes to an empty slice; it passes validation but is
+\* An absent `steps` deserializes to an empty slice; it passes validation but is
 degenerate.
 
 Timestamps are Go `time.Time`, so any RFC3339 string Go's JSON decoder accepts is
@@ -115,15 +114,39 @@ bad file reports all problems at once. It checks structure only; it does not
 judge agent behavior. Rules:
 
 1. `id` non-empty, `agent` non-empty.
-2. `startTime` and `endTime` non-zero; `endTime` not before `startTime`.
-3. Every step `timestamp` non-zero.
-4. Per-type required field present: `llm_call`->`llm`, `tool_call`/`tool_result`
+2. `version` present and semver-compatible with this build; see [Versioning](#versioning).
+3. `startTime` and `endTime` non-zero; `endTime` not before `startTime`.
+4. Every step `timestamp` non-zero.
+5. Per-type required field present: `llm_call`->`llm`, `tool_call`/`tool_result`
    ->`tool`, `node_transition`->`node`.
-5. `type` is one of the four known values.
+6. `type` is one of the four known values.
 
 The runner (`runner/runner.go`) treats a file as a `fileError` if it cannot be
 read, cannot be unmarshaled, or fails `Validate`. Such files are skipped for
 evaluation and reported separately.
+
+## Versioning
+
+The `version` field carries the trace **schema** version (not the agent's own
+version), as semver `MAJOR.MINOR.PATCH`. The Go core declares a canonical
+`trajectory.SchemaVersion` (currently `0.1.0`) and a supported MAJOR.
+
+Compatibility gate (`trajectory/checkVersion`, part of `Run.Validate`):
+
+- The version is required. An empty or non-semver version is rejected.
+- A trace is accepted when its MAJOR equals the build's supported MAJOR,
+  regardless of MINOR/PATCH. MINOR/PATCH bumps are additive and backward
+  compatible (for example, adding the optional `toolCallId` field bumped the
+  MINOR), so a `0.0.1` trace and a `0.1.0` trace are both accepted by a `0.x`
+  build.
+- A trace whose MAJOR differs is rejected with an actionable message naming the
+  supported version. Bump the MAJOR only for a breaking change (a removed or
+  renamed field, or a changed meaning).
+
+The Python emitter mirrors this constant as `trazo_emitter.SCHEMA_VERSION` and
+stamps it on every trace by default. Keep the two constants in sync; a Go test
+(`trajectory/schema_test.go`) checks the JSON Schema requires `version` and that
+`SchemaVersion` passes the gate.
 
 ## Tool call / result pairing (what the emitter must respect)
 

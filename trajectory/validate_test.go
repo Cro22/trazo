@@ -12,7 +12,7 @@ func validRun() *Run {
 	return &Run{
 		ID:        "run-valid",
 		Agent:     "data_extractor",
-		Version:   "1.2.0",
+		Version:   "0.1.0",
 		StartTime: start,
 		EndTime:   start.Add(5 * time.Second),
 		Steps: []Step{
@@ -71,17 +71,52 @@ func TestValidate_InvalidRuns(t *testing.T) {
 	}
 }
 
-// TestValidate_LenientOptionalFields pins the pragmatic strictness policy:
-// an absent version and an empty step list are accepted, since older emitters
-// produced such traces and they carry no structural ambiguity.
+// TestValidate_Version pins the schema-compatibility gate: version is required
+// and must be semver sharing the build's supported major. Same-major minor/patch
+// differences are accepted (additive, backward compatible); a missing version,
+// non-semver, or cross-major version is rejected.
+func TestValidate_Version(t *testing.T) {
+	accepted := []string{"0.1.0", "0.0.1", "0.9.9", "0.1.5"}
+	for _, v := range accepted {
+		t.Run("accept "+v, func(t *testing.T) {
+			run := validRun()
+			run.Version = v
+			if err := run.Validate(); err != nil {
+				t.Errorf("version %q should be accepted, got: %v", v, err)
+			}
+		})
+	}
+
+	rejected := []struct {
+		v       string
+		wantMsg string
+	}{
+		{"", "version is empty"},
+		{"1.0.0", "unsupported"},
+		{"2.3.4", "unsupported"},
+		{"0.1", "not semver"},
+		{"v0.1.0", "not semver"},
+		{"0.1.x", "not semver"},
+	}
+	for _, tc := range rejected {
+		t.Run("reject "+tc.v, func(t *testing.T) {
+			run := validRun()
+			run.Version = tc.v
+			err := run.Validate()
+			if err == nil {
+				t.Fatalf("version %q should be rejected", tc.v)
+			}
+			if !strings.Contains(err.Error(), tc.wantMsg) {
+				t.Errorf("version %q: expected error containing %q, got: %v", tc.v, tc.wantMsg, err)
+			}
+		})
+	}
+}
+
+// TestValidate_LenientOptionalFields pins the remaining pragmatic leniency: an
+// empty step list and zero quantities are accepted, since they carry no
+// structural ambiguity (a run with no steps simply has nothing to evaluate).
 func TestValidate_LenientOptionalFields(t *testing.T) {
-	t.Run("absent version", func(t *testing.T) {
-		run := validRun()
-		run.Version = ""
-		if err := run.Validate(); err != nil {
-			t.Errorf("absent version should be accepted, got: %v", err)
-		}
-	})
 	t.Run("empty steps", func(t *testing.T) {
 		run := validRun()
 		run.Steps = nil

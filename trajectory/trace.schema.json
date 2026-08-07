@@ -5,7 +5,7 @@
   "description": "One agent run per file, as a single JSON object. The source of truth for this format is the Go code (trajectory/steps.go for the shape, trajectory/validate.go for the acceptance gate); this schema is the derived, strict external contract. It is deliberately stricter than the Go loader in one way: the loader ignores unknown fields, this schema forbids them (additionalProperties: false). Some invariants that Run.Validate enforces are cross-field and cannot be expressed in JSON Schema, so they are Go-only: endTime not before startTime, step timestamps monotonic non-decreasing, and every step timestamp within [startTime, endTime]. A document that passes this schema still has to pass Run.Validate.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "agent", "startTime", "endTime"],
+  "required": ["id", "agent", "version", "startTime", "endTime"],
   "properties": {
     "id": {
       "type": "string",
@@ -19,7 +19,8 @@
     },
     "version": {
       "type": "string",
-      "description": "Schema/trace version. Not enforced by Run.Validate, but present in every emitted trace by convention; include it."
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Schema version, semver MAJOR.MINOR.PATCH. Required. This schema only enforces the shape; Run.Validate additionally rejects a trace whose MAJOR differs from the build's supported major (see the Versioning section of the schema doc)."
     },
     "startTime": {
       "type": "string",

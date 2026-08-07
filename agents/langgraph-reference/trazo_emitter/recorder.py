@@ -1,11 +1,11 @@
 """TraceRecorder: build a Run step by step and flush it to disk.
 
-Correlation note: the Go schema has no call id. tool_call and tool_result are
-paired by tool name in FIFO order (see evaluator/toolcalls.go and
-../docs/trace-schema.md). This recorder mirrors that: record_tool_call returns a
-ToolCall handle that carries the tool name, and record_tool_result accepts either
-that handle or a bare tool name. Correlation is therefore logical, at this layer;
-no extra field is written to the JSON.
+Correlation note: tool_call and tool_result are paired by an explicit call id.
+record_tool_call returns a ToolCall handle carrying a generated id, which is
+written to both the call and its result as toolCallId, so pairing is precise even
+when the same tool is called several times. record_tool_result also accepts a
+bare tool name, in which case the Go core falls back to name/FIFO pairing (see
+evaluator/toolcalls.go and ../docs/trace-schema.md).
 """
 
 from __future__ import annotations
@@ -17,6 +17,12 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 from .models import Run, Step, StepType
+
+# SCHEMA_VERSION mirrors trajectory.SchemaVersion in the Go core and is the
+# default version stamped on emitted traces. Keep the two in sync: the Go loader
+# rejects a trace whose major differs from its supported major. Bump the minor
+# for additive changes, the major for breaking ones.
+SCHEMA_VERSION = "0.1.0"
 
 
 @dataclass(frozen=True)
@@ -48,7 +54,7 @@ class TraceRecorder:
         self,
         run_id: str,
         agent: str,
-        version: str,
+        version: str = SCHEMA_VERSION,
         *,
         clock: Optional[Clock] = None,
         start_time: Optional[datetime] = None,

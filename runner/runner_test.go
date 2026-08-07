@@ -127,7 +127,7 @@ func TestRunner_Run_DeterministicOrder(t *testing.T) {
 		content := fmt.Sprintf(`{
   "id": %q,
   "agent": "stress",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "startTime": "2026-06-12T14:00:00Z",
   "endTime": "2026-06-12T14:00:05Z",
   "steps": [
