@@ -27,6 +27,14 @@ func main() {
 	log.SetFlags(0)
 	log.SetPrefix("trazo: ")
 
+	// `trazo version` is a subcommand, handled before flag parsing so it works
+	// without any other arguments.
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Print(versionReport(readBuildDetails()))
+		return
+	}
+
+	showVersion := flag.Bool("version", false, "print version information and exit")
 	dir := flag.String("dir", "./testdata/runs", "directory of traces to scan when no PATH is given")
 	recursive := flag.Bool("recursive", false, "descend into subdirectories when PATH is a directory")
 	validate := flag.Bool("validate", false, "only check that traces load and pass structural validation; skip evaluators")
@@ -44,6 +52,11 @@ func main() {
 
 	flag.Usage = usage
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Print(versionReport(readBuildDetails()))
+		return
+	}
 
 	if flag.NArg() > 1 {
 		log.Printf("at most one PATH may be given, got %d", flag.NArg())
@@ -98,7 +111,7 @@ func main() {
 func usage() {
 	w := flag.CommandLine.Output()
 	fmt.Fprintf(w, "trazo evaluates agent trace files (trazo JSON format) and reports findings.\n\n")
-	fmt.Fprintf(w, "Usage:\n  trazo [flags] [PATH]\n\n")
+	fmt.Fprintf(w, "Usage:\n  trazo [flags] [PATH]\n  trazo version\n\n")
 	fmt.Fprintf(w, "PATH is a single trace file or a directory of .json traces. If omitted, -dir is scanned.\n\n")
 	fmt.Fprintf(w, "Flags:\n")
 	flag.PrintDefaults()

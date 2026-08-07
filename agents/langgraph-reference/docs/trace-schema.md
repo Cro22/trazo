@@ -148,6 +148,9 @@ stamps it on every trace by default. Keep the two constants in sync; a Go test
 (`trajectory/schema_test.go`) checks the JSON Schema requires `version` and that
 `SchemaVersion` passes the gate.
 
+The full compatibility contract, the product-vs-schema version distinction, and
+the release process live in [`docs/versioning.md`](../../../docs/versioning.md).
+
 ## Tool call / result pairing (what the emitter must respect)
 
 `ToolCallEvaluator` (`evaluator/toolcalls.go`) walks the steps in order and pairs
