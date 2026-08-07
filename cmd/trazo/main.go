@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Cro22/trazo/config"
 	"github.com/Cro22/trazo/evaluator"
 	"github.com/Cro22/trazo/report"
 	"github.com/Cro22/trazo/runner"
@@ -37,6 +38,7 @@ func main() {
 	}
 
 	showVersion := flag.Bool("version", false, "print version information and exit")
+	configPath := flag.String("config", "", "path to a JSON evaluator policy file (see docs/config.md)")
 	dir := flag.String("dir", "./testdata/runs", "directory of traces to scan when no PATH is given")
 	recursive := flag.Bool("recursive", false, "descend into subdirectories when PATH is a directory")
 	validate := flag.Bool("validate", false, "only check that traces load and pass structural validation; skip evaluators")
@@ -88,16 +90,53 @@ func main() {
 		log.Printf("no .json traces found under %q", path)
 	}
 
-	evaluators := buildEvaluators(*validate, evaluatorConfig{
-		maxRepeats:       *maxRepeats,
-		maxStepCost:      *maxStepCost,
-		maxStepLatencyMs: *maxStepLatencyMs,
-		maxRunCost:       *maxRunCost,
-		maxRunLatencyMs:  *maxRunLatencyMs,
-		terminalNodes:    splitCSV(*terminalNodes),
-		llmJudge:         *llmJudge,
-		judgeModel:       *judgeModel,
+	// Policy precedence: built-in defaults < config file < explicitly-set flags.
+	// The config file pins a reproducible policy; a flag the user actually passed
+	// still wins over it (flag.Visit reports only the flags that were set).
+	cfg := config.Default()
+	if *configPath != "" {
+		loaded, err := config.Load(*configPath)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		cfg = *loaded
+	}
+	flag.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "max-repeats":
+			cfg.Evaluators.Loops.MaxRepeats = *maxRepeats
+		case "max-step-cost":
+			cfg.Evaluators.CostLatency.MaxStepCost = *maxStepCost
+		case "max-step-latency-ms":
+			cfg.Evaluators.CostLatency.MaxStepLatencyMs = *maxStepLatencyMs
+		case "max-run-cost":
+			cfg.Evaluators.CostLatency.MaxRunCost = *maxRunCost
+		case "max-run-latency-ms":
+			cfg.Evaluators.CostLatency.MaxRunLatencyMs = *maxRunLatencyMs
+		case "terminal-nodes":
+			cfg.Evaluators.NodeTransitions.TerminalNodes = splitCSV(*terminalNodes)
+		case "llm-judge":
+			cfg.Evaluators.LLMJudge.Enabled = *llmJudge
+		case "judge-model":
+			cfg.Evaluators.LLMJudge.Model = *judgeModel
+		}
 	})
+
+	// In validate-only mode the runner just loads and structurally validates each
+	// file, so no evaluators are built regardless of the policy.
+	var evaluators []evaluator.Evaluator
+	if !*validate {
+		evaluators, err = cfg.Build(func(model string) (evaluator.Evaluator, error) {
+			client, cerr := evaluator.NewGeminiClient(model)
+			if cerr != nil {
+				return nil, cerr
+			}
+			return &evaluator.LLMJudgeEvaluator{Client: client}, nil
+		})
+		if err != nil {
+			log.Fatalf("llm-judge: %v", err)
+		}
+	}
 
 	// Cancel in-flight evaluation on Ctrl+C (SIGINT) or SIGTERM so a long run,
 	// notably one using the network-bound LLM judge, stops promptly.
@@ -156,45 +195,6 @@ func render(out string, validate bool, resp *runner.Response, meta report.Meta) 
 			fmt.Print(report.Text(resp))
 		}
 	}
-}
-
-type evaluatorConfig struct {
-	maxRepeats       int
-	maxStepCost      float64
-	maxStepLatencyMs int64
-	maxRunCost       float64
-	maxRunLatencyMs  int64
-	terminalNodes    []string
-	llmJudge         bool
-	judgeModel       string
-}
-
-// buildEvaluators assembles the evaluator set. In validate-only mode it returns
-// none, so the runner just loads and structurally validates each file. The LLM
-// judge is opt-in and constructed last because it can fail (missing API key).
-func buildEvaluators(validate bool, cfg evaluatorConfig) []evaluator.Evaluator {
-	if validate {
-		return nil
-	}
-	evaluators := []evaluator.Evaluator{
-		&evaluator.ToolCallEvaluator{},
-		&evaluator.LoopEvaluator{MaxRepeats: cfg.maxRepeats},
-		&evaluator.CostLatencyEvaluator{
-			MaxStepCost:      cfg.maxStepCost,
-			MaxStepLatencyMs: cfg.maxStepLatencyMs,
-			MaxRunCost:       cfg.maxRunCost,
-			MaxRunLatencyMs:  cfg.maxRunLatencyMs,
-		},
-		&evaluator.NodeTransitionEvaluator{TerminalNodes: cfg.terminalNodes},
-	}
-	if cfg.llmJudge {
-		client, err := evaluator.NewGeminiClient(cfg.judgeModel)
-		if err != nil {
-			log.Fatalf("llm-judge: %v", err)
-		}
-		evaluators = append(evaluators, &evaluator.LLMJudgeEvaluator{Client: client})
-	}
-	return evaluators
 }
 
 // splitCSV parses a comma-separated flag value into a trimmed, non-empty slice,

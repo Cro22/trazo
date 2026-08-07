@@ -19,6 +19,11 @@ product version. The trace **schema** version is tracked separately; see
   with `outputVersion`, `trazoVersion`, `traceSchemaVersion`, `generatedAt`, an
   aggregate `summary`, `results`, and structured `errors`. Documented in
   [docs/output.md](docs/output.md).
+- Evaluator policy file: `-config <path>` loads a versioned, stdlib-only JSON
+  policy (the new `config` package) that pins which evaluators run and their
+  thresholds, for reproducibility across dev, CI, and teams. Precedence is
+  defaults < config < explicitly-set flags. Documented in
+  [docs/config.md](docs/config.md), with an example config.
 - This changelog.
 
 ### Changed
