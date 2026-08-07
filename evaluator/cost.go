@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Cro22/trazo/trajectory"
@@ -58,7 +59,10 @@ func (e *CostLatencyEvaluator) maxRunLatencyMs() int64 {
 	return e.MaxRunLatencyMs
 }
 
-func (e *CostLatencyEvaluator) EvaluateRun(run *trajectory.Run) (*Evaluation, error) {
+func (e *CostLatencyEvaluator) EvaluateRun(ctx context.Context, run *trajectory.Run) (*Evaluation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	eva := &Evaluation{
 		EvaluatorName: "cost_latency",
 		RunID:         run.ID,

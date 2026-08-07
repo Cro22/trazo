@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Cro22/trazo/trajectory"
@@ -8,7 +9,7 @@ import (
 
 func TestNodeTransition_EndsAtTerminal(t *testing.T) {
 	run := runWith(nodeStep("start"), nodeStep("router"), nodeStep("end"))
-	eval, err := (&NodeTransitionEvaluator{}).EvaluateRun(run)
+	eval, err := (&NodeTransitionEvaluator{}).EvaluateRun(context.Background(), run)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -19,7 +20,7 @@ func TestNodeTransition_EndsAtTerminal(t *testing.T) {
 
 func TestNodeTransition_EndsAtNonTerminalFlagged(t *testing.T) {
 	run := runWith(nodeStep("start"), nodeStep("fallback_handler"))
-	eval, _ := (&NodeTransitionEvaluator{}).EvaluateRun(run)
+	eval, _ := (&NodeTransitionEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 1 {
 		t.Fatalf("expected 1 finding, got %d", len(eval.Findings))
 	}
@@ -30,7 +31,7 @@ func TestNodeTransition_EndsAtNonTerminalFlagged(t *testing.T) {
 
 func TestNodeTransition_CaseInsensitiveTerminal(t *testing.T) {
 	run := runWith(nodeStep("START"), nodeStep("END"))
-	eval, _ := (&NodeTransitionEvaluator{}).EvaluateRun(run)
+	eval, _ := (&NodeTransitionEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 0 {
 		t.Errorf("expected 0 findings for END, got %d", len(eval.Findings))
 	}
@@ -40,7 +41,7 @@ func TestNodeTransition_NoNodeTransitions(t *testing.T) {
 	run := runWith(
 		trajectory.Step{Type: trajectory.StepTypeToolCall, Tool: "t"},
 	)
-	eval, _ := (&NodeTransitionEvaluator{}).EvaluateRun(run)
+	eval, _ := (&NodeTransitionEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 0 {
 		t.Errorf("expected 0 findings when there are no node transitions, got %d", len(eval.Findings))
 	}
@@ -53,7 +54,7 @@ func TestNodeTransition_IgnoresTrailingNonNodeSteps(t *testing.T) {
 		nodeStep("end"),
 		trajectory.Step{Type: trajectory.StepTypeToolCall, Tool: "t"},
 	)
-	eval, _ := (&NodeTransitionEvaluator{}).EvaluateRun(run)
+	eval, _ := (&NodeTransitionEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 0 {
 		t.Errorf("expected 0 findings, got %d: %+v", len(eval.Findings), eval.Findings)
 	}
@@ -61,7 +62,7 @@ func TestNodeTransition_IgnoresTrailingNonNodeSteps(t *testing.T) {
 
 func TestNodeTransition_CustomTerminalSet(t *testing.T) {
 	run := runWith(nodeStep("start"), nodeStep("complete"))
-	eval, _ := (&NodeTransitionEvaluator{TerminalNodes: []string{"complete"}}).EvaluateRun(run)
+	eval, _ := (&NodeTransitionEvaluator{TerminalNodes: []string{"complete"}}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 0 {
 		t.Errorf("expected 0 findings with custom terminal set, got %d", len(eval.Findings))
 	}

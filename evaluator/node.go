@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -34,7 +35,10 @@ func (e *NodeTransitionEvaluator) terminalSet() map[string]bool {
 	return set
 }
 
-func (e *NodeTransitionEvaluator) EvaluateRun(run *trajectory.Run) (*Evaluation, error) {
+func (e *NodeTransitionEvaluator) EvaluateRun(ctx context.Context, run *trajectory.Run) (*Evaluation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	eva := &Evaluation{
 		EvaluatorName: "node_transitions",
 		RunID:         run.ID,

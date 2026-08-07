@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,7 +15,7 @@ func TestRunner_Run(t *testing.T) {
 	evals := []evaluator.Evaluator{&evaluator.ToolCallEvaluator{}}
 	runner := NewRunner(evals)
 
-	resp, err := runner.Run("../testdata/runs")
+	resp, err := runner.Run(context.Background(), "../testdata/runs")
 	if err != nil {
 		t.Fatalf("unexpected error in Run: %v", err)
 	}
@@ -34,6 +36,31 @@ func TestRunner_Run(t *testing.T) {
 	}
 	if resp.FileErrors[1].File != "invalid_run.json" {
 		t.Errorf("expected second file error on invalid_run.json, got %s", resp.FileErrors[1].File)
+	}
+}
+
+// TestRunner_Run_ContextCancelled asserts that an already-cancelled context
+// short-circuits every file: no evaluations are produced and each eligible file
+// surfaces a context.Canceled error instead of being evaluated.
+func TestRunner_Run_ContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	runner := NewRunner([]evaluator.Evaluator{&evaluator.ToolCallEvaluator{}})
+	resp, err := runner.Run(ctx, "../testdata/runs")
+	if err != nil {
+		t.Fatalf("Run itself should not error on cancellation, got: %v", err)
+	}
+	if len(resp.Evaluations) != 0 {
+		t.Errorf("expected no evaluations under a cancelled context, got %d", len(resp.Evaluations))
+	}
+	if len(resp.FileErrors) == 0 {
+		t.Fatal("expected file errors under a cancelled context, got none")
+	}
+	for _, fe := range resp.FileErrors {
+		if !errors.Is(fe.Err, context.Canceled) {
+			t.Errorf("file %s: expected context.Canceled, got %v", fe.File, fe.Err)
+		}
 	}
 }
 
@@ -66,7 +93,7 @@ func TestRunner_Run_DeterministicOrder(t *testing.T) {
 	runner := NewRunner([]evaluator.Evaluator{&evaluator.ToolCallEvaluator{}})
 
 	for attempt := 0; attempt < 5; attempt++ {
-		resp, err := runner.Run(dir)
+		resp, err := runner.Run(context.Background(), dir)
 		if err != nil {
 			t.Fatalf("unexpected error in Run: %v", err)
 		}

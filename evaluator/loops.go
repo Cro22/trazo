@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -31,7 +32,10 @@ func (e *LoopEvaluator) maxRepeats() int {
 	return e.MaxRepeats
 }
 
-func (e *LoopEvaluator) EvaluateRun(run *trajectory.Run) (*Evaluation, error) {
+func (e *LoopEvaluator) EvaluateRun(ctx context.Context, run *trajectory.Run) (*Evaluation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	eva := &Evaluation{
 		EvaluatorName: "loops",
 		RunID:         run.ID,

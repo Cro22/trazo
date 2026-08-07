@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -39,7 +40,9 @@ func NewRunner(evals []evaluator.Evaluator) *Runner {
 // Run reads every .json file in dir and evaluates it. Files are processed
 // concurrently (bounded by the CPU count) but results are assembled in the
 // original directory order, so output is deterministic regardless of scheduling.
-func (r *Runner) Run(dir string) (*Response, error) {
+// ctx is propagated to every evaluator, so cancelling it (Ctrl+C, a CI timeout)
+// aborts in-flight work rather than letting it run to completion.
+func (r *Runner) Run(ctx context.Context, dir string) (*Response, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -72,7 +75,7 @@ func (r *Runner) Run(dir string) (*Response, error) {
 		go func(i int, name string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[i] = r.processFile(dir, name)
+			results[i] = r.processFile(ctx, dir, name)
 		}(i, name)
 	}
 	wg.Wait()
@@ -86,8 +89,13 @@ func (r *Runner) Run(dir string) (*Response, error) {
 	return &response, nil
 }
 
-func (r *Runner) processFile(dir, name string) fileResult {
+func (r *Runner) processFile(ctx context.Context, dir, name string) fileResult {
 	var res fileResult
+
+	if err := ctx.Err(); err != nil {
+		res.errs = append(res.errs, FileError{File: name, Err: err})
+		return res
+	}
 
 	fileBytes, err := os.ReadFile(filepath.Join(dir, name))
 	if err != nil {
@@ -104,7 +112,7 @@ func (r *Runner) processFile(dir, name string) fileResult {
 		return res
 	}
 	for _, judge := range r.evals {
-		eval, err := judge.EvaluateRun(run)
+		eval, err := judge.EvaluateRun(ctx, run)
 		if err != nil {
 			res.errs = append(res.errs, FileError{File: name, Err: err})
 			continue

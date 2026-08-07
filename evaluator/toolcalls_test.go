@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestToolCallEvaluator_EvaluateRun(t *testing.T) {
 	}
 
 	evaluator := &ToolCallEvaluator{}
-	eval, err := evaluator.EvaluateRun(run)
+	eval, err := evaluator.EvaluateRun(context.Background(), run)
 	if err != nil {
 		t.Fatalf("unexpected error in EvaluateRun: %v", err)
 	}
@@ -43,7 +44,7 @@ func TestToolCallEvaluator_Success(t *testing.T) {
 	}
 
 	evaluator := &ToolCallEvaluator{}
-	eval, err := evaluator.EvaluateRun(run)
+	eval, err := evaluator.EvaluateRun(context.Background(), run)
 	if err != nil {
 		t.Fatalf("unexpected error in EvaluateRun: %v", err)
 	}
@@ -65,7 +66,7 @@ func TestToolCallEvaluator_MissingResult(t *testing.T) {
 	}
 
 	evaluator := &ToolCallEvaluator{}
-	eval, err := evaluator.EvaluateRun(run)
+	eval, err := evaluator.EvaluateRun(context.Background(), run)
 	if err != nil {
 		t.Fatalf("unexpected error in EvaluateRun: %v", err)
 	}
@@ -94,7 +95,7 @@ func TestToolCallEvaluator_PairsByIDOutOfOrder(t *testing.T) {
 		idToolResult("search", "c2"),
 		idToolResult("search", "c1"),
 	}}
-	eval, _ := (&ToolCallEvaluator{}).EvaluateRun(run)
+	eval, _ := (&ToolCallEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 0 {
 		t.Fatalf("expected 0 findings with id pairing, got %d: %+v", len(eval.Findings), eval.Findings)
 	}
@@ -107,7 +108,7 @@ func TestToolCallEvaluator_ResultWithUnknownIDIsOrphan(t *testing.T) {
 		idToolCall("t", "c1"),
 		idToolResult("t", "c2"),
 	}}
-	eval, _ := (&ToolCallEvaluator{}).EvaluateRun(run)
+	eval, _ := (&ToolCallEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 2 {
 		t.Fatalf("expected 2 neutral findings (orphan result + unanswered call), got %d: %+v",
 			len(eval.Findings), eval.Findings)
@@ -125,7 +126,7 @@ func TestToolCallEvaluator_IDMatchWinsOverName(t *testing.T) {
 		idToolCall("a", "x"),
 		idToolResult("b", "x"),
 	}}
-	eval, _ := (&ToolCallEvaluator{}).EvaluateRun(run)
+	eval, _ := (&ToolCallEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 0 {
 		t.Fatalf("expected id match to pair across names, got %d: %+v", len(eval.Findings), eval.Findings)
 	}
@@ -143,7 +144,7 @@ func TestToolCallEvaluator_OrphanResult(t *testing.T) {
 	}
 
 	evaluator := &ToolCallEvaluator{}
-	eval, err := evaluator.EvaluateRun(run)
+	eval, err := evaluator.EvaluateRun(context.Background(), run)
 	if err != nil {
 		t.Fatalf("unexpected error in EvaluateRun: %v", err)
 	}

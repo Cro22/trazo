@@ -1,11 +1,16 @@
 package evaluator
 
 import (
+	"context"
+
 	"github.com/Cro22/trazo/trajectory"
 )
 
+// Evaluator judges a single run and reports findings. Implementations must
+// honor ctx: return ctx.Err() promptly if it is cancelled (the LLM judge, for
+// instance, ties its network call to ctx so a cancelled run does not hang).
 type Evaluator interface {
-	EvaluateRun(run *trajectory.Run) (*Evaluation, error)
+	EvaluateRun(ctx context.Context, run *trajectory.Run) (*Evaluation, error)
 }
 
 type Judgment string

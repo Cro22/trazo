@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -39,7 +40,7 @@ func countJudgment(eval *Evaluation, j Judgment) int {
 
 func TestCostLatency_StepCostOverBudget(t *testing.T) {
 	run := costRun(1, llmStep(0.10, 100))
-	eval, err := (&CostLatencyEvaluator{}).EvaluateRun(run)
+	eval, err := (&CostLatencyEvaluator{}).EvaluateRun(context.Background(), run)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,7 +54,7 @@ func TestCostLatency_StepCostOverBudget(t *testing.T) {
 
 func TestCostLatency_StepLatencyOverBudget(t *testing.T) {
 	run := costRun(1, llmStep(0.001, 40000))
-	eval, _ := (&CostLatencyEvaluator{}).EvaluateRun(run)
+	eval, _ := (&CostLatencyEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 1 {
 		t.Fatalf("expected 1 finding, got %d", len(eval.Findings))
 	}
@@ -69,7 +70,7 @@ func TestCostLatency_AggregateRunCost(t *testing.T) {
 		llmStep(0.05, 10), llmStep(0.05, 10), llmStep(0.05, 10),
 		llmStep(0.05, 10), llmStep(0.05, 10),
 	)
-	eval, _ := (&CostLatencyEvaluator{}).EvaluateRun(run)
+	eval, _ := (&CostLatencyEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 1 {
 		t.Fatalf("expected 1 run-level finding, got %d: %+v", len(eval.Findings), eval.Findings)
 	}
@@ -80,7 +81,7 @@ func TestCostLatency_AggregateRunCost(t *testing.T) {
 
 func TestCostLatency_RunLatencyOverBudget(t *testing.T) {
 	run := costRun(200, llmStep(0.001, 10)) // 200s wall-clock > 120s default
-	eval, _ := (&CostLatencyEvaluator{}).EvaluateRun(run)
+	eval, _ := (&CostLatencyEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 1 {
 		t.Fatalf("expected 1 finding, got %d", len(eval.Findings))
 	}
@@ -91,7 +92,7 @@ func TestCostLatency_RunLatencyOverBudget(t *testing.T) {
 
 func TestCostLatency_WithinBudget(t *testing.T) {
 	run := costRun(5, llmStep(0.001, 500), llmStep(0.002, 800))
-	eval, _ := (&CostLatencyEvaluator{}).EvaluateRun(run)
+	eval, _ := (&CostLatencyEvaluator{}).EvaluateRun(context.Background(), run)
 	if len(eval.Findings) != 0 {
 		t.Errorf("expected 0 findings within budget, got %d: %+v", len(eval.Findings), eval.Findings)
 	}
@@ -100,7 +101,7 @@ func TestCostLatency_WithinBudget(t *testing.T) {
 func TestCostLatency_CustomThresholds(t *testing.T) {
 	run := costRun(5, llmStep(0.01, 2000))
 	e := &CostLatencyEvaluator{MaxStepCost: 0.005, MaxStepLatencyMs: 1000}
-	eval, _ := e.EvaluateRun(run)
+	eval, _ := e.EvaluateRun(context.Background(), run)
 	// Both step cost and step latency breach the tighter budgets.
 	if countJudgment(eval, JudgmentNeutral) != 2 {
 		t.Fatalf("expected 2 neutral findings, got %d: %+v", len(eval.Findings), eval.Findings)

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/Cro22/trazo/evaluator"
@@ -66,7 +68,12 @@ func main() {
 		evaluators = append(evaluators, &evaluator.LLMJudgeEvaluator{Client: client})
 	}
 
-	resp, err := runner.NewRunner(evaluators).Run(*dir)
+	// Cancel in-flight evaluation on Ctrl+C (SIGINT) or SIGTERM so a long run,
+	// notably one using the network-bound LLM judge, stops promptly.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	resp, err := runner.NewRunner(evaluators).Run(ctx, *dir)
 	if err != nil {
 		log.Fatalf("Error running: %v", err)
 	}

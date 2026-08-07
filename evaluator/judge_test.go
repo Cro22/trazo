@@ -35,7 +35,7 @@ func judgeRun(steps ...trajectory.Step) *trajectory.Run {
 func TestLLMJudge_GoodVerdict(t *testing.T) {
 	run := judgeRun(llmOut(`"1 bug, 1 doc. Clear report."`))
 	e := &LLMJudgeEvaluator{Client: fakeJudge{reply: `{"judgment":"good","score":0.9,"comment":"clear"}`}}
-	eval, err := e.EvaluateRun(run)
+	eval, err := e.EvaluateRun(context.Background(), run)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestLLMJudge_BadVerdictWithProse(t *testing.T) {
 	// The judge wraps the JSON in prose and a code fence; we still parse it.
 	reply := "Here is my grade:\n```json\n{\"judgment\": \"bad\", \"score\": 0.1, \"comment\": \"empty\"}\n```"
 	e := &LLMJudgeEvaluator{Client: fakeJudge{reply: reply}}
-	eval, _ := e.EvaluateRun(judgeRun(llmOut(`""`)))
+	eval, _ := e.EvaluateRun(context.Background(), judgeRun(llmOut(`""`)))
 	if len(eval.Findings) != 1 || eval.Findings[0].Judgment != JudgmentBad {
 		t.Fatalf("expected 1 bad finding, got %+v", eval.Findings)
 	}
@@ -60,7 +60,7 @@ func TestLLMJudge_BadVerdictWithProse(t *testing.T) {
 
 func TestLLMJudge_UnparseableIsNeutral(t *testing.T) {
 	e := &LLMJudgeEvaluator{Client: fakeJudge{reply: "I cannot comply."}}
-	eval, _ := e.EvaluateRun(judgeRun(llmOut(`"x"`)))
+	eval, _ := e.EvaluateRun(context.Background(), judgeRun(llmOut(`"x"`)))
 	if len(eval.Findings) != 1 || eval.Findings[0].Judgment != JudgmentNeutral {
 		t.Fatalf("expected 1 neutral finding, got %+v", eval.Findings)
 	}
@@ -68,7 +68,7 @@ func TestLLMJudge_UnparseableIsNeutral(t *testing.T) {
 
 func TestLLMJudge_NoLLMCallNoFindings(t *testing.T) {
 	run := judgeRun(trajectory.Step{Type: trajectory.StepTypeToolCall, Tool: "t"})
-	eval, err := (&LLMJudgeEvaluator{Client: fakeJudge{reply: "unused"}}).EvaluateRun(run)
+	eval, err := (&LLMJudgeEvaluator{Client: fakeJudge{reply: "unused"}}).EvaluateRun(context.Background(), run)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -79,14 +79,14 @@ func TestLLMJudge_NoLLMCallNoFindings(t *testing.T) {
 
 func TestLLMJudge_ClientErrorPropagates(t *testing.T) {
 	e := &LLMJudgeEvaluator{Client: fakeJudge{err: errors.New("network down")}}
-	_, err := e.EvaluateRun(judgeRun(llmOut(`"x"`)))
+	_, err := e.EvaluateRun(context.Background(), judgeRun(llmOut(`"x"`)))
 	if err == nil {
 		t.Fatal("expected an error when the client fails")
 	}
 }
 
 func TestLLMJudge_NilClientErrors(t *testing.T) {
-	_, err := (&LLMJudgeEvaluator{}).EvaluateRun(judgeRun(llmOut(`"x"`)))
+	_, err := (&LLMJudgeEvaluator{}).EvaluateRun(context.Background(), judgeRun(llmOut(`"x"`)))
 	if err == nil {
 		t.Fatal("expected an error when no client is configured")
 	}
@@ -103,7 +103,7 @@ func TestGeminiClient_CompleteAgainstFakeServer(t *testing.T) {
 	defer server.Close()
 
 	client := &GeminiClient{APIKey: "test", Model: "gemini-2.5-flash", Endpoint: server.URL, HTTPClient: server.Client()}
-	eval, err := (&LLMJudgeEvaluator{Client: client}).EvaluateRun(judgeRun(llmOut(`"a report"`)))
+	eval, err := (&LLMJudgeEvaluator{Client: client}).EvaluateRun(context.Background(), judgeRun(llmOut(`"a report"`)))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

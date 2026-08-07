@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Cro22/trazo/trajectory"
@@ -9,7 +10,10 @@ import (
 type ToolCallEvaluator struct {
 }
 
-func (e *ToolCallEvaluator) EvaluateRun(run *trajectory.Run) (*Evaluation, error) {
+func (e *ToolCallEvaluator) EvaluateRun(ctx context.Context, run *trajectory.Run) (*Evaluation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	eva := &Evaluation{
 		EvaluatorName: "tool_calls",
 		RunID:         run.ID,
