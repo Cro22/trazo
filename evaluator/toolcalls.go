@@ -19,16 +19,11 @@ func (e *ToolCallEvaluator) EvaluateRun(run *trajectory.Run) (*Evaluation, error
 	var pending []int
 
 	for i, step := range run.Steps {
-		if step.Type == trajectory.StepTypeToolCall {
+		switch step.Type {
+		case trajectory.StepTypeToolCall:
 			pending = append(pending, i)
-		} else if step.Type == trajectory.StepTypeToolResult {
-			matched := -1
-			for j, pIdx := range pending {
-				if run.Steps[pIdx].Tool == step.Tool {
-					matched = j
-					break
-				}
-			}
+		case trajectory.StepTypeToolResult:
+			matched := matchPending(run, pending, step)
 			if matched != -1 {
 				pending = append(pending[:matched], pending[matched+1:]...)
 			} else {
@@ -55,4 +50,26 @@ func (e *ToolCallEvaluator) EvaluateRun(run *trajectory.Run) (*Evaluation, error
 		})
 	}
 	return eva, nil
+}
+
+// matchPending finds the index within pending of the tool_call that a
+// tool_result answers, or -1 if none. When the result carries a toolCallId, the
+// match is by id and is authoritative: no id match means an orphan, with no
+// fallback. Only when the result has no id do we fall back to the earliest
+// pending call with the same tool name (FIFO), preserving legacy behavior.
+func matchPending(run *trajectory.Run, pending []int, result trajectory.Step) int {
+	if result.ToolCallID != "" {
+		for j, pIdx := range pending {
+			if run.Steps[pIdx].ToolCallID == result.ToolCallID {
+				return j
+			}
+		}
+		return -1
+	}
+	for j, pIdx := range pending {
+		if run.Steps[pIdx].Tool == result.Tool {
+			return j
+		}
+	}
+	return -1
 }

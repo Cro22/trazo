@@ -26,6 +26,7 @@ type Run struct {
 type Step struct {
 	LLM          string          `json:"llm,omitempty"`
 	Tool         string          `json:"tool,omitempty"`
+	ToolCallID   string          `json:"toolCallId,omitempty"`
 	Node         string          `json:"node,omitempty"`
 	Type         StepType        `json:"type"`
 	Timestamp    time.Time       `json:"timestamp"`

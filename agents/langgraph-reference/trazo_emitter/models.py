@@ -43,6 +43,7 @@ class Step:
     duration_ms: int = 0
     llm: Optional[str] = None
     tool: Optional[str] = None
+    tool_call_id: Optional[str] = None
     node: Optional[str] = None
     input: Optional[Any] = None
     output: Optional[Any] = None
@@ -60,6 +61,8 @@ class Step:
             d["llm"] = self.llm
         if self.tool:
             d["tool"] = self.tool
+        if self.tool_call_id:
+            d["toolCallId"] = self.tool_call_id
         if self.node:
             d["node"] = self.node
         if self.input is not None:

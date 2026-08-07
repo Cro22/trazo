@@ -49,7 +49,8 @@ Each element of `steps` deserializes into `trajectory.Step`.
 | `type`         | string (StepType) | always                  | One of the four types below. Unknown values fail validation. |
 | `timestamp`    | RFC3339 time      | always                  | Must be non-zero for every step. |
 | `llm`          | string            | `type == llm_call`      | Required for `llm_call`; omit otherwise. |
-| `tool`         | string            | `tool_call`/`tool_result` | Required for both; also the pairing key (see below). |
+| `tool`         | string            | `tool_call`/`tool_result` | Required for both; the fallback pairing key (see below). |
+| `toolCallId`   | string            | optional                | Correlates a `tool_result` with its `tool_call`. Preferred over the tool name when present. |
 | `node`         | string            | `type == node_transition` | Required for `node_transition`. |
 | `input`        | raw JSON          | optional                | Any JSON value (object, array, string, number). Payload is opaque to the core. |
 | `output`       | raw JSON          | optional                | Any JSON value. In fixtures it appears as an object, an array, and a bare string. |
@@ -101,13 +102,17 @@ evaluation and reported separately.
 `ToolCallEvaluator` (`evaluator/toolcalls.go`) walks the steps in order and pairs
 tool calls with results. Key facts the Python emitter must honor:
 
-- Pairing key is the `tool` **name**, not a correlation id. There is no
-  `callId` field in the schema.
-- Matching is order-sensitive and FIFO per name: a `tool_result` matches the
-  earliest still-pending `tool_call` with the same `tool`. So emit a call before
-  its result, and do not interleave two pending calls of the *same* tool name if
-  you need them paired deterministically.
-- A `tool_result` with no pending call of that name -> `neutral` finding
+- Preferred key is `toolCallId`. When a `tool_result` carries a `toolCallId`, it
+  matches the pending `tool_call` with the same id, regardless of order or name.
+  The id is authoritative: a `toolCallId` that matches no pending call is an
+  orphan, with no name fallback. The emitter (`TraceRecorder`) generates a
+  `toolCallId` per call by default and copies it onto the result via the
+  `ToolCall` handle, so emitted traces always pair precisely.
+- Fallback (no `toolCallId` on the result): the `tool` **name**, order-sensitive
+  and FIFO. A `tool_result` matches the earliest still-pending `tool_call` with
+  the same `tool`. So emit a call before its result, and do not interleave two
+  pending calls of the same tool name if you need them paired deterministically.
+- A `tool_result` that matches no pending call -> `neutral` finding
   ("without matching tool_call").
 - A `tool_call` with no later matching result -> `neutral` finding
   ("has no matching result").
