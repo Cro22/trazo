@@ -6,7 +6,7 @@ this layer is pure data. See ../docs/trace-schema.md for the format.
 """
 
 from .models import Run, Step, StepType, to_rfc3339
-from .recorder import ToolCall, TraceRecorder
+from .recorder import SCHEMA_VERSION, ToolCall, TraceRecorder
 
 __all__ = [
     "Run",
@@ -14,5 +14,6 @@ __all__ = [
     "StepType",
     "TraceRecorder",
     "ToolCall",
+    "SCHEMA_VERSION",
     "to_rfc3339",
 ]

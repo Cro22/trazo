@@ -47,7 +47,7 @@ def _findings_for(result: dict, run_id: str) -> list[dict]:
 
 
 def test_clean_run_evaluates_with_no_findings(tmp_path) -> None:
-    rec = TraceRecorder("run-clean", "github-triage", "0.0.1", start_time=_dt(0))
+    rec = TraceRecorder("run-clean", "github-triage", start_time=_dt(0))
     rec.record_node_transition("start", timestamp=_dt(0))
     call = rec.record_tool_call("fetch_issues", input={"repo": "golang/example"}, timestamp=_dt(1))
     rec.record_tool_result(call, output={"count": 0}, timestamp=_dt(2))
@@ -60,7 +60,7 @@ def test_clean_run_evaluates_with_no_findings(tmp_path) -> None:
 
 
 def test_tool_error_produces_bad_finding(tmp_path) -> None:
-    rec = TraceRecorder("run-toolerr", "github-triage", "0.0.1", start_time=_dt(0))
+    rec = TraceRecorder("run-toolerr", "github-triage", start_time=_dt(0))
     call = rec.record_tool_call("fetch_issues", timestamp=_dt(0))
     rec.record_tool_result(call, error="rate limited: 403", timestamp=_dt(1))
     rec.flush(tmp_path, end_time=_dt(2))
@@ -70,7 +70,7 @@ def test_tool_error_produces_bad_finding(tmp_path) -> None:
 
 
 def test_orphan_tool_call_produces_neutral_finding(tmp_path) -> None:
-    rec = TraceRecorder("run-orphan", "github-triage", "0.0.1", start_time=_dt(0))
+    rec = TraceRecorder("run-orphan", "github-triage", start_time=_dt(0))
     rec.record_tool_call("fetch_issues", timestamp=_dt(0))  # no result emitted
     rec.flush(tmp_path, end_time=_dt(1))
 

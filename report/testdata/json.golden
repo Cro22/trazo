@@ -1,0 +1,43 @@
+{
+  "evaluations": [
+    {
+      "evaluatorName": "tool_calls",
+      "runId": "run-1",
+      "findings": [
+        {
+          "stepIndex": 3,
+          "judgment": "bad",
+          "comment": "tool postgres_query fails: connection refused"
+        },
+        {
+          "stepIndex": 2,
+          "judgment": "neutral",
+          "comment": "tool_call postgres_query has no matching result"
+        }
+      ]
+    },
+    {
+      "evaluatorName": "cost_latency",
+      "runId": "run-1",
+      "findings": [
+        {
+          "stepIndex": -1,
+          "judgment": "neutral",
+          "score": 1.5,
+          "comment": "run cost 1.50 over budget|limit\nsecond line"
+        }
+      ]
+    },
+    {
+      "evaluatorName": "tool_calls",
+      "runId": "run-ok",
+      "findings": []
+    }
+  ],
+  "fileErrors": [
+    {
+      "file": "broken.json",
+      "error": "unexpected end of JSON input"
+    }
+  ]
+}

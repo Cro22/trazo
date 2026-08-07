@@ -1,11 +1,11 @@
 """TraceRecorder: build a Run step by step and flush it to disk.
 
-Correlation note: the Go schema has no call id. tool_call and tool_result are
-paired by tool name in FIFO order (see evaluator/toolcalls.go and
-../docs/trace-schema.md). This recorder mirrors that: record_tool_call returns a
-ToolCall handle that carries the tool name, and record_tool_result accepts either
-that handle or a bare tool name. Correlation is therefore logical, at this layer;
-no extra field is written to the JSON.
+Correlation note: tool_call and tool_result are paired by an explicit call id.
+record_tool_call returns a ToolCall handle carrying a generated id, which is
+written to both the call and its result as toolCallId, so pairing is precise even
+when the same tool is called several times. record_tool_result also accepts a
+bare tool name, in which case the Go core falls back to name/FIFO pairing (see
+evaluator/toolcalls.go and ../docs/trace-schema.md).
 """
 
 from __future__ import annotations
@@ -18,13 +18,22 @@ from typing import Any, Callable, Optional, Union
 
 from .models import Run, Step, StepType
 
+# SCHEMA_VERSION mirrors trajectory.SchemaVersion in the Go core and is the
+# default version stamped on emitted traces. Keep the two in sync: the Go loader
+# rejects a trace whose major differs from its supported major. Bump the minor
+# for additive changes, the major for breaking ones.
+SCHEMA_VERSION = "0.1.0"
+
 
 @dataclass(frozen=True)
 class ToolCall:
-    """Handle returned by record_tool_call, used to pair the later result."""
+    """Handle returned by record_tool_call, used to pair the later result. The id
+    is written to both the call and its result as toolCallId, giving precise
+    pairing even when the same tool is called several times."""
 
     tool: str
     step_index: int
+    id: str
 
 
 Clock = Callable[[], datetime]
@@ -45,7 +54,7 @@ class TraceRecorder:
         self,
         run_id: str,
         agent: str,
-        version: str,
+        version: str = SCHEMA_VERSION,
         *,
         clock: Optional[Clock] = None,
         start_time: Optional[datetime] = None,
@@ -56,6 +65,7 @@ class TraceRecorder:
         self._clock: Clock = clock or _utc_now
         self.start_time: datetime = start_time or self._clock()
         self.steps: list[Step] = []
+        self._tool_call_seq = 0
 
     def _stamp(self, timestamp: Optional[datetime]) -> datetime:
         return timestamp if timestamp is not None else self._clock()
@@ -109,17 +119,25 @@ class TraceRecorder:
         input: Optional[Any] = None,
         duration_ms: int = 0,
         timestamp: Optional[datetime] = None,
+        call_id: Optional[str] = None,
     ) -> ToolCall:
+        """Record a tool call. A toolCallId is generated when not supplied, so the
+        emitted trace always pairs precisely; pass call_id to reuse the model's
+        own id when available."""
+        if call_id is None:
+            self._tool_call_seq += 1
+            call_id = f"call-{self._tool_call_seq}"
         self.steps.append(
             Step(
                 type=StepType.TOOL_CALL,
                 timestamp=self._stamp(timestamp),
                 tool=tool,
+                tool_call_id=call_id,
                 input=input,
                 duration_ms=duration_ms,
             )
         )
-        return ToolCall(tool=tool, step_index=len(self.steps) - 1)
+        return ToolCall(tool=tool, step_index=len(self.steps) - 1, id=call_id)
 
     def record_tool_result(
         self,
@@ -130,12 +148,21 @@ class TraceRecorder:
         duration_ms: int = 0,
         timestamp: Optional[datetime] = None,
     ) -> None:
-        tool = call.tool if isinstance(call, ToolCall) else call
+        """Record a tool result. Passing the ToolCall handle carries its
+        toolCallId onto the result for id-based pairing; a bare tool name pairs by
+        name/order instead."""
+        if isinstance(call, ToolCall):
+            tool = call.tool
+            call_id: Optional[str] = call.id
+        else:
+            tool = call
+            call_id = None
         self.steps.append(
             Step(
                 type=StepType.TOOL_RESULT,
                 timestamp=self._stamp(timestamp),
                 tool=tool,
+                tool_call_id=call_id,
                 output=output,
                 error=error,
                 duration_ms=duration_ms,

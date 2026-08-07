@@ -11,6 +11,34 @@ description of the Go code, not a new contract. The source of truth is:
 If any statement here disagrees with the Go code, the Go code wins. Verified
 against the repo at commit level of branch `feature/0.0.1`.
 
+## Machine-readable schema
+
+A JSON Schema (draft 2020-12) mirrors this document at
+[`trajectory/trace.schema.json`](../../../trajectory/trace.schema.json). It is
+derived from the Go types, not a competing source of truth: a Go test
+(`trajectory/schema_test.go`) fails the build if the schema's step-type `enum` or
+per-type required fields drift from the `trajectory` constants, and a Python test
+(`tests/test_schema.py`) validates every committed fixture and the emitter output
+against it.
+
+Two intentional gaps between the schema and `Run.Validate`:
+
+- The schema is **stricter** on unknown fields: it sets `additionalProperties:
+  false`, while the Go loader ignores unknown fields. The schema defines the
+  intended contract; the loader is lenient.
+- The schema is **weaker** on cross-field temporal invariants: `endTime` not
+  before `startTime`, monotonic step timestamps, and steps within
+  `[startTime, endTime]` cannot be expressed in JSON Schema and are enforced only
+  by `Run.Validate` in Go. Passing the schema does not exempt a trace from
+  `Run.Validate`.
+
+Validate a file against it with any draft 2020-12 validator, e.g. from the
+Python side:
+
+```bash
+python -c "import json,jsonschema; s=json.load(open('trajectory/trace.schema.json')); jsonschema.validate(json.load(open('agents/langgraph-reference/docs/sample-trace.json')), s)"
+```
+
 ## File layout
 
 - One run per file. One JSON object at the top level.
@@ -27,13 +55,12 @@ The top-level object deserializes into `trajectory.Run`.
 |-------------|-------------|----------|-------|
 | `id`        | string      | yes      | Non-empty. Used as `runId` in evaluator output. |
 | `agent`     | string      | yes      | Non-empty. Logical agent name. |
-| `version`   | string      | no*      | Not checked by `Validate`, but present in every fixture. Treat as required by convention. |
+| `version`   | string      | yes      | Semver `MAJOR.MINOR.PATCH`. Required and gated for compatibility; see [Versioning](#versioning). |
 | `startTime` | RFC3339 time| yes      | Must be non-zero. |
 | `endTime`   | RFC3339 time| yes      | Must be non-zero and not before `startTime`. |
-| `steps`     | array<Step> | yes**    | May be empty and still pass `Validate`, but a run with no steps has nothing to evaluate. |
+| `steps`     | array<Step> | yes*     | May be empty and still pass `Validate`, but a run with no steps has nothing to evaluate. |
 
-\* Not enforced by `Validate`; include it anyway.
-\** An absent `steps` deserializes to an empty slice; it passes validation but is
+\* An absent `steps` deserializes to an empty slice; it passes validation but is
 degenerate.
 
 Timestamps are Go `time.Time`, so any RFC3339 string Go's JSON decoder accepts is
@@ -49,7 +76,8 @@ Each element of `steps` deserializes into `trajectory.Step`.
 | `type`         | string (StepType) | always                  | One of the four types below. Unknown values fail validation. |
 | `timestamp`    | RFC3339 time      | always                  | Must be non-zero for every step. |
 | `llm`          | string            | `type == llm_call`      | Required for `llm_call`; omit otherwise. |
-| `tool`         | string            | `tool_call`/`tool_result` | Required for both; also the pairing key (see below). |
+| `tool`         | string            | `tool_call`/`tool_result` | Required for both; the fallback pairing key (see below). |
+| `toolCallId`   | string            | optional                | Correlates a `tool_result` with its `tool_call`. Preferred over the tool name when present. |
 | `node`         | string            | `type == node_transition` | Required for `node_transition`. |
 | `input`        | raw JSON          | optional                | Any JSON value (object, array, string, number). Payload is opaque to the core. |
 | `output`       | raw JSON          | optional                | Any JSON value. In fixtures it appears as an object, an array, and a bare string. |
@@ -86,28 +114,56 @@ bad file reports all problems at once. It checks structure only; it does not
 judge agent behavior. Rules:
 
 1. `id` non-empty, `agent` non-empty.
-2. `startTime` and `endTime` non-zero; `endTime` not before `startTime`.
-3. Every step `timestamp` non-zero.
-4. Per-type required field present: `llm_call`->`llm`, `tool_call`/`tool_result`
+2. `version` present and semver-compatible with this build; see [Versioning](#versioning).
+3. `startTime` and `endTime` non-zero; `endTime` not before `startTime`.
+4. Every step `timestamp` non-zero.
+5. Per-type required field present: `llm_call`->`llm`, `tool_call`/`tool_result`
    ->`tool`, `node_transition`->`node`.
-5. `type` is one of the four known values.
+6. `type` is one of the four known values.
 
 The runner (`runner/runner.go`) treats a file as a `fileError` if it cannot be
 read, cannot be unmarshaled, or fails `Validate`. Such files are skipped for
 evaluation and reported separately.
+
+## Versioning
+
+The `version` field carries the trace **schema** version (not the agent's own
+version), as semver `MAJOR.MINOR.PATCH`. The Go core declares a canonical
+`trajectory.SchemaVersion` (currently `0.1.0`) and a supported MAJOR.
+
+Compatibility gate (`trajectory/checkVersion`, part of `Run.Validate`):
+
+- The version is required. An empty or non-semver version is rejected.
+- A trace is accepted when its MAJOR equals the build's supported MAJOR,
+  regardless of MINOR/PATCH. MINOR/PATCH bumps are additive and backward
+  compatible (for example, adding the optional `toolCallId` field bumped the
+  MINOR), so a `0.0.1` trace and a `0.1.0` trace are both accepted by a `0.x`
+  build.
+- A trace whose MAJOR differs is rejected with an actionable message naming the
+  supported version. Bump the MAJOR only for a breaking change (a removed or
+  renamed field, or a changed meaning).
+
+The Python emitter mirrors this constant as `trazo_emitter.SCHEMA_VERSION` and
+stamps it on every trace by default. Keep the two constants in sync; a Go test
+(`trajectory/schema_test.go`) checks the JSON Schema requires `version` and that
+`SchemaVersion` passes the gate.
 
 ## Tool call / result pairing (what the emitter must respect)
 
 `ToolCallEvaluator` (`evaluator/toolcalls.go`) walks the steps in order and pairs
 tool calls with results. Key facts the Python emitter must honor:
 
-- Pairing key is the `tool` **name**, not a correlation id. There is no
-  `callId` field in the schema.
-- Matching is order-sensitive and FIFO per name: a `tool_result` matches the
-  earliest still-pending `tool_call` with the same `tool`. So emit a call before
-  its result, and do not interleave two pending calls of the *same* tool name if
-  you need them paired deterministically.
-- A `tool_result` with no pending call of that name -> `neutral` finding
+- Preferred key is `toolCallId`. When a `tool_result` carries a `toolCallId`, it
+  matches the pending `tool_call` with the same id, regardless of order or name.
+  The id is authoritative: a `toolCallId` that matches no pending call is an
+  orphan, with no name fallback. The emitter (`TraceRecorder`) generates a
+  `toolCallId` per call by default and copies it onto the result via the
+  `ToolCall` handle, so emitted traces always pair precisely.
+- Fallback (no `toolCallId` on the result): the `tool` **name**, order-sensitive
+  and FIFO. A `tool_result` matches the earliest still-pending `tool_call` with
+  the same `tool`. So emit a call before its result, and do not interleave two
+  pending calls of the same tool name if you need them paired deterministically.
+- A `tool_result` that matches no pending call -> `neutral` finding
   ("without matching tool_call").
 - A `tool_call` with no later matching result -> `neutral` finding
   ("has no matching result").
@@ -135,10 +191,13 @@ go run ./cmd/trazo -dir ./agents/langgraph-reference/docs
 Expected output:
 
 ```
-RunID run-triage-demo-01. Findings: 0 Evaluator: tool_calls
+run-triage-demo-01 (github-triage)  clean
+
+Summary: 1 run, 0 bad, 0 neutral, 0 good, 0 file errors
 ```
 
-Add `-json` for machine-readable output.
+Add `-json` for machine-readable output, or `-validate` for a structure-only
+pass that skips the evaluators.
 
 ### Exit codes
 

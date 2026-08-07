@@ -1,11 +1,16 @@
 package evaluator
 
 import (
+	"context"
+
 	"github.com/Cro22/trazo/trajectory"
 )
 
+// Evaluator judges a single run and reports findings. Implementations must
+// honor ctx: return ctx.Err() promptly if it is cancelled (the LLM judge, for
+// instance, ties its network call to ctx so a cancelled run does not hang).
 type Evaluator interface {
-	EvaluateRun(run *trajectory.Run) (*Evaluation, error)
+	EvaluateRun(ctx context.Context, run *trajectory.Run) (*Evaluation, error)
 }
 
 type Judgment string
@@ -26,9 +31,13 @@ const (
 )
 
 type Evaluation struct {
-	EvaluatorName string    `json:"evaluatorName"`
-	RunID         string    `json:"runId"`
-	Findings      []Finding `json:"findings"`
+	EvaluatorName string `json:"evaluatorName"`
+	RunID         string `json:"runId"`
+	// Agent is the logical agent name of the run, copied from the trace by the
+	// runner for human-facing output. It is not serialized (json:"-") so the
+	// machine-readable JSON output stays keyed on runId alone.
+	Agent    string    `json:"-"`
+	Findings []Finding `json:"findings"`
 }
 
 type Finding struct {

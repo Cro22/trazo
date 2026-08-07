@@ -41,7 +41,10 @@ func (e *LLMJudgeEvaluator) timeout() time.Duration {
 	return e.Timeout
 }
 
-func (e *LLMJudgeEvaluator) EvaluateRun(run *trajectory.Run) (*Evaluation, error) {
+func (e *LLMJudgeEvaluator) EvaluateRun(ctx context.Context, run *trajectory.Run) (*Evaluation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	eva := &Evaluation{
 		EvaluatorName: "llm_judge",
 		RunID:         run.ID,
@@ -56,7 +59,9 @@ func (e *LLMJudgeEvaluator) EvaluateRun(run *trajectory.Run) (*Evaluation, error
 		return eva, nil // nothing to judge
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout())
+	// Bound the call by the judge timeout, but keep the caller's ctx as parent so
+	// a cancelled run (Ctrl+C, an aborting runner) also aborts the network call.
+	ctx, cancel := context.WithTimeout(ctx, e.timeout())
 	defer cancel()
 
 	raw, err := e.Client.Complete(ctx, judgePrompt(run, output))

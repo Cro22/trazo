@@ -69,10 +69,30 @@ def test_tool_call_returns_handle_for_correlation() -> None:
     assert isinstance(handle, ToolCall)
     assert handle.tool == "fetch_issues"
     assert handle.step_index == 0
-    # Passing the handle to the result reuses the tool name.
+    assert handle.id == "call-1"  # auto-generated
+    # Passing the handle to the result reuses the tool name and the id.
     rec.record_tool_result(handle, output={"count": 2}, timestamp=_dt(2))
     assert rec.steps[1].tool == "fetch_issues"
     assert rec.steps[1].type.value == "tool_result"
+    assert rec.steps[0].to_dict()["toolCallId"] == "call-1"
+    assert rec.steps[1].to_dict()["toolCallId"] == "call-1"
+
+
+def test_tool_call_ids_are_unique_and_paired() -> None:
+    rec = TraceRecorder("run-1", "agent", "0.0.1", start_time=_dt(0))
+    a = rec.record_tool_call("search", timestamp=_dt(1))
+    b = rec.record_tool_call("search", timestamp=_dt(2))
+    assert (a.id, b.id) == ("call-1", "call-2")
+    rec.record_tool_result(b, output="rb", timestamp=_dt(3))
+    rec.record_tool_result(a, output="ra", timestamp=_dt(4))
+    ids = [s.to_dict().get("toolCallId") for s in rec.steps]
+    assert ids == ["call-1", "call-2", "call-2", "call-1"]
+
+
+def test_tool_result_by_bare_name_has_no_id() -> None:
+    rec = TraceRecorder("run-1", "agent", "0.0.1", start_time=_dt(0))
+    rec.record_tool_result("db", error="boom2", timestamp=_dt(1))
+    assert "toolCallId" not in rec.steps[0].to_dict()
 
 
 def test_tool_result_accepts_bare_name() -> None:

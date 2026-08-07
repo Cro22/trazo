@@ -1,7 +1,7 @@
 {
   "id": "run-ok-123",
   "agent": "data_extractor",
-  "version": "1.2.0",
+  "version": "0.1.0",
   "startTime": "2026-06-12T14:00:00Z",
   "endTime": "2026-06-12T14:00:05Z",
   "steps": [

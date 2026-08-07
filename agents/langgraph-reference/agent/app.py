@@ -30,7 +30,6 @@ def _default_handler(recorder: TraceRecorder, model: str) -> BaseCallbackHandler
     return TracingCallbackHandler(recorder, model=model)
 
 AGENT_NAME = "github-triage"
-AGENT_VERSION = "0.0.1"
 
 
 @dataclass
@@ -53,7 +52,9 @@ def run_triage(
     clock: Optional[Callable[[], datetime]] = None,
     handler_factory: Optional[HandlerFactory] = None,
 ) -> TriageResult:
-    recorder = TraceRecorder(run_id, AGENT_NAME, AGENT_VERSION, clock=clock)
+    # The trace version is the schema version (SCHEMA_VERSION default), not the
+    # agent's own version; the Go core gates compatibility on it.
+    recorder = TraceRecorder(run_id, AGENT_NAME, clock=clock)
     recorder.record_node_transition("start")
 
     tools = build_tools(source)

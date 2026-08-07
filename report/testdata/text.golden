@@ -1,0 +1,11 @@
+run-1 (data_extractor)
+  [BAD]      step 3  tool_calls    tool postgres_query fails: connection refused
+  [NEUTRAL]  step 2  tool_calls    tool_call postgres_query has no matching result
+  [NEUTRAL]  run     cost_latency  run cost 1.50 over budget|limit; second line
+
+run-ok (data_extractor)  clean
+
+Summary: 2 runs, 1 bad, 2 neutral, 0 good, 1 file error
+
+File errors:
+  broken.json: unexpected end of JSON input

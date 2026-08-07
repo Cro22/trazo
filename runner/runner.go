@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -36,16 +38,36 @@ func NewRunner(evals []evaluator.Evaluator) *Runner {
 	return &Runner{evals: evals}
 }
 
-// Run reads every .json file in dir and evaluates it. Files are processed
-// concurrently (bounded by the CPU count) but results are assembled in the
-// original directory order, so output is deterministic regardless of scheduling.
-func (r *Runner) Run(dir string) (*Response, error) {
-	entries, err := os.ReadDir(dir)
+// CollectFiles returns the .json files under root as paths joined with root,
+// in a deterministic order. When recursive is true it descends into
+// subdirectories (lexical order, courtesy of filepath.WalkDir); otherwise it
+// reads only the top level (sorted, courtesy of os.ReadDir). Non-.json files are
+// skipped, so docs and other artifacts can sit alongside traces.
+func CollectFiles(root string, recursive bool) ([]string, error) {
+	if recursive {
+		var files []string
+		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if filepath.Ext(d.Name()) == ".json" {
+				files = append(files, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return files, nil
+	}
+
+	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil, err
 	}
-
-	// Collect eligible files first so their index fixes the output order.
 	var files []string
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -54,9 +76,29 @@ func (r *Runner) Run(dir string) (*Response, error) {
 		if filepath.Ext(entry.Name()) != ".json" {
 			continue
 		}
-		files = append(files, entry.Name())
+		files = append(files, filepath.Join(root, entry.Name()))
 	}
+	return files, nil
+}
 
+// Run reads every .json file in dir (non-recursively) and evaluates it. It is a
+// convenience wrapper over CollectFiles + RunFiles; callers needing a single
+// file, recursion, or a precomputed list should use those directly.
+func (r *Runner) Run(ctx context.Context, dir string) (*Response, error) {
+	files, err := CollectFiles(dir, false)
+	if err != nil {
+		return nil, err
+	}
+	return r.RunFiles(ctx, files), nil
+}
+
+// RunFiles evaluates an explicit list of trace file paths. Files are processed
+// concurrently (bounded by the CPU count) but results are assembled in the
+// input order, so output is deterministic regardless of scheduling. ctx is
+// propagated to every evaluator, so cancelling it (Ctrl+C, a CI timeout) aborts
+// in-flight work rather than letting it run to completion. Each FileError
+// carries the path as given, so errors are unambiguous across subdirectories.
+func (r *Runner) RunFiles(ctx context.Context, files []string) *Response {
 	results := make([]fileResult, len(files))
 
 	workers := runtime.NumCPU()
@@ -66,14 +108,14 @@ func (r *Runner) Run(dir string) (*Response, error) {
 	sem := make(chan struct{}, max(workers, 1))
 	var wg sync.WaitGroup
 
-	for i, name := range files {
+	for i, path := range files {
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(i int, name string) {
+		go func(i int, path string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[i] = r.processFile(dir, name)
-		}(i, name)
+			results[i] = r.processFile(ctx, path)
+		}(i, path)
 	}
 	wg.Wait()
 
@@ -83,32 +125,39 @@ func (r *Runner) Run(dir string) (*Response, error) {
 		response.Evaluations = append(response.Evaluations, res.evals...)
 		response.FileErrors = append(response.FileErrors, res.errs...)
 	}
-	return &response, nil
+	return &response
 }
 
-func (r *Runner) processFile(dir, name string) fileResult {
+func (r *Runner) processFile(ctx context.Context, path string) fileResult {
 	var res fileResult
 
-	fileBytes, err := os.ReadFile(filepath.Join(dir, name))
+	if err := ctx.Err(); err != nil {
+		res.errs = append(res.errs, FileError{File: path, Err: err})
+		return res
+	}
+
+	fileBytes, err := os.ReadFile(path)
 	if err != nil {
-		res.errs = append(res.errs, FileError{File: name, Err: err})
+		res.errs = append(res.errs, FileError{File: path, Err: err})
 		return res
 	}
 	run, err := trajectory.LoadRun(fileBytes)
 	if err != nil {
-		res.errs = append(res.errs, FileError{File: name, Err: err})
+		res.errs = append(res.errs, FileError{File: path, Err: err})
 		return res
 	}
 	if err := run.Validate(); err != nil {
-		res.errs = append(res.errs, FileError{File: name, Err: err})
+		res.errs = append(res.errs, FileError{File: path, Err: err})
 		return res
 	}
 	for _, judge := range r.evals {
-		eval, err := judge.EvaluateRun(run)
+		eval, err := judge.EvaluateRun(ctx, run)
 		if err != nil {
-			res.errs = append(res.errs, FileError{File: name, Err: err})
+			res.errs = append(res.errs, FileError{File: path, Err: err})
 			continue
 		}
+		// Carry the agent name for human-facing output; evaluators only set RunID.
+		eval.Agent = run.Agent
 		res.evals = append(res.evals, eval)
 	}
 	return res
