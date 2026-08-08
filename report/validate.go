@@ -22,7 +22,7 @@ func ValidateSummary(resp *runner.Response, total int) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Validated %d file(s): %d valid, %d invalid.\n", total, valid, invalid)
 	for _, fe := range resp.FileErrors {
-		fmt.Fprintf(&b, "  %s: %s\n", fe.File, cell(fe.Err.Error()))
+		b.WriteString(fileErrorLine(fe))
 	}
 	return b.String()
 }

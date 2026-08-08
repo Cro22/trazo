@@ -52,7 +52,7 @@ func goldenFixture() *runner.Response {
 			},
 		},
 		FileErrors: []runner.FileError{
-			{File: "broken.json", Err: errors.New("unexpected end of JSON input")},
+			{File: "broken.json", Kind: runner.ErrorKindInvalidJSON, Err: errors.New("unexpected end of JSON input")},
 		},
 	}
 }

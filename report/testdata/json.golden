@@ -1,5 +1,5 @@
 {
-  "outputVersion": "1.0",
+  "outputVersion": "1.1",
   "trazoVersion": "0.2.0",
   "traceSchemaVersion": "0.1.0",
   "generatedAt": "2026-08-07T12:00:00Z",
@@ -51,6 +51,7 @@
   "errors": [
     {
       "file": "broken.json",
+      "kind": "invalid_json",
       "error": "unexpected end of JSON input"
     }
   ]

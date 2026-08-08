@@ -38,7 +38,7 @@ func Text(resp *runner.Response) string {
 	if len(resp.FileErrors) > 0 {
 		b.WriteString("\nFile errors:\n")
 		for _, fe := range resp.FileErrors {
-			fmt.Fprintf(&b, "  %s: %s\n", fe.File, oneline(fe.Err.Error()))
+			b.WriteString(fileErrorLine(fe))
 		}
 	}
 	return b.String()
@@ -138,6 +138,16 @@ func summaryLine(resp *runner.Response) string {
 // rows stay aligned.
 func oneline(s string) string {
 	return strings.ReplaceAll(s, "\n", "; ")
+}
+
+// fileErrorLine renders one file error, tagging it with its kind when known so
+// the reader can tell a parse error from an invalid trace at a glance.
+func fileErrorLine(fe runner.FileError) string {
+	msg := oneline(fe.Err.Error())
+	if fe.Kind != "" {
+		return fmt.Sprintf("  %s [%s]: %s\n", fe.File, fe.Kind, msg)
+	}
+	return fmt.Sprintf("  %s: %s\n", fe.File, msg)
 }
 
 func plural(n int, unit string) string {

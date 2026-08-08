@@ -12,7 +12,7 @@ import (
 // envelope shape below), independent of the product and trace-schema versions.
 // Bump the minor for additive fields, the major for a breaking change. See
 // docs/output.md.
-const OutputVersion = "1.0"
+const OutputVersion = "1.1"
 
 // Meta is the context the caller supplies for the JSON envelope: the versions to
 // stamp, the number of files considered, and the generation time. GeneratedAt is
@@ -26,6 +26,7 @@ type Meta struct {
 
 type fileErrorJSON struct {
 	File  string `json:"file"`
+	Kind  string `json:"kind"`
 	Error string `json:"error"`
 }
 
@@ -57,7 +58,7 @@ func JSON(resp *runner.Response, meta Meta) (string, error) {
 		env.Results = []*evaluator.Evaluation{}
 	}
 	for _, fe := range resp.FileErrors {
-		env.Errors = append(env.Errors, fileErrorJSON{File: fe.File, Error: fe.Err.Error()})
+		env.Errors = append(env.Errors, fileErrorJSON{File: fe.File, Kind: string(fe.Kind), Error: fe.Err.Error()})
 	}
 
 	data, err := json.MarshalIndent(env, "", "  ")

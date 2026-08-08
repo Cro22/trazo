@@ -8,7 +8,7 @@ independent of the product and trace-schema versions.
 
 ```json
 {
-  "outputVersion": "1.0",
+  "outputVersion": "1.1",
   "trazoVersion": "0.2.0",
   "traceSchemaVersion": "0.1.0",
   "generatedAt": "2026-08-07T12:00:00Z",
@@ -32,7 +32,7 @@ independent of the product and trace-schema versions.
     }
   ],
   "errors": [
-    { "file": "broken.json", "error": "unexpected end of JSON input" }
+    { "file": "broken.json", "kind": "invalid_json", "error": "unexpected end of JSON input" }
   ]
 }
 ```
@@ -64,7 +64,17 @@ Each `results[i]` object: `evaluatorName` (string), `runId` (string), `findings`
 (array). Each finding: `stepIndex` (int; `-1` is run-level), `judgment` (`good` |
 `neutral` | `bad`), `comment` (string), and `score` (number, omitted when zero).
 
-Each `errors[i]` object: `file` (path as given to trazo) and `error` (message).
+Each `errors[i]` object: `file` (path as given to trazo), `kind` (category, see
+below), and `error` (message). `kind` lets a consumer react by category instead
+of matching message strings:
+
+| `kind` | Meaning |
+|--------|---------|
+| `read_file` | The file could not be read. |
+| `invalid_json` | The bytes are not valid JSON. |
+| `invalid_trace` | JSON parsed but failed structural validation (`Run.Validate`). |
+| `evaluator` | An evaluator returned an error. |
+| `canceled` | The context was canceled (Ctrl+C, timeout) before processing. |
 
 ## Stability
 

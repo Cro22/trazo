@@ -8,4 +8,4 @@ run-ok (data_extractor)  clean
 Summary: 2 runs, 1 bad, 2 neutral, 0 good, 1 file error
 
 File errors:
-  broken.json: unexpected end of JSON input
+  broken.json [invalid_json]: unexpected end of JSON input

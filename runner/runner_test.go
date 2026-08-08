@@ -37,8 +37,14 @@ func TestRunner_Run(t *testing.T) {
 	if resp.FileErrors[0].File != wantBroken {
 		t.Errorf("expected first file error on %s, got %s", wantBroken, resp.FileErrors[0].File)
 	}
+	if resp.FileErrors[0].Kind != ErrorKindInvalidJSON {
+		t.Errorf("broken.json: expected kind %q, got %q", ErrorKindInvalidJSON, resp.FileErrors[0].Kind)
+	}
 	if resp.FileErrors[1].File != wantInvalid {
 		t.Errorf("expected second file error on %s, got %s", wantInvalid, resp.FileErrors[1].File)
+	}
+	if resp.FileErrors[1].Kind != ErrorKindInvalidTrace {
+		t.Errorf("invalid_run.json: expected kind %q, got %q", ErrorKindInvalidTrace, resp.FileErrors[1].Kind)
 	}
 }
 
