@@ -34,6 +34,31 @@ jobs:
         working-directory: agents/langgraph-reference
         run: pytest -q
 
+  schema:
+    name: schema conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: JSON Schema stays in sync with the Go types
+        run: go test ./trajectory/ -run "TestSchema" -v
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the schema validator
+        working-directory: agents/langgraph-reference
+        run: pip install -r requirements.txt
+
+      - name: Fixtures and emitter output conform to the published JSON Schema
+        working-directory: agents/langgraph-reference
+        run: pytest -q tests/test_schema.py
+
   trazo-gate:
     name: trazo gate demo
     runs-on: ubuntu-latest

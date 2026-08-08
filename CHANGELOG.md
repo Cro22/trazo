@@ -27,6 +27,9 @@ product version. The trace **schema** version is tracked separately; see
 - Black-box CLI tests (`cmd/trazo/cli_test.go`) that build the binary and assert
   exit codes (0/1/2), each output format, invalid flags, missing paths, empty
   directories, and config/flag precedence.
+- A dedicated `schema conformance` CI job that runs the Go schema-sync tests and
+  validates fixtures and emitter output against the published JSON Schema, plus a
+  test that the shipped example config always loads.
 - `-verbose` flag: prints operational metrics to stderr after a run
   (`loaded=N valid=V invalid=I evaluated=E duration=Xms`), so batch runs are
   observable without parsing the results.

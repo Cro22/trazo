@@ -105,6 +105,18 @@ func TestLoad_RejectsNegativeThresholds(t *testing.T) {
 	}
 }
 
+// TestExampleConfigLoads keeps the shipped example policy honest: it must always
+// load and build under the current loader, so the docs never drift from the code.
+func TestExampleConfigLoads(t *testing.T) {
+	cfg, err := Load(filepath.Join("..", "docs", "trazo.config.example.json"))
+	if err != nil {
+		t.Fatalf("example config failed to load: %v", err)
+	}
+	if _, err := cfg.Build(noJudge); err != nil {
+		t.Fatalf("example config failed to build: %v", err)
+	}
+}
+
 func TestBuild_JudgeEnabledCallsFactory(t *testing.T) {
 	cfg := Default()
 	cfg.Evaluators.LLMJudge.Enabled = true
