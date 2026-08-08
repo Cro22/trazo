@@ -24,6 +24,9 @@ product version. The trace **schema** version is tracked separately; see
   thresholds, for reproducibility across dev, CI, and teams. Precedence is
   defaults < config < explicitly-set flags. Documented in
   [docs/config.md](docs/config.md), with an example config.
+- Black-box CLI tests (`cmd/trazo/cli_test.go`) that build the binary and assert
+  exit codes (0/1/2), each output format, invalid flags, missing paths, empty
+  directories, and config/flag precedence.
 - This changelog.
 
 ### Changed
