@@ -1,0 +1,82 @@
+{
+  "id": "run-complex-01",
+  "agent": "researcher",
+  "version": "0.1.0",
+  "startTime": "2026-08-07T09:00:00Z",
+  "endTime": "2026-08-07T09:00:12Z",
+  "steps": [
+    {
+      "node": "start",
+      "type": "node_transition",
+      "timestamp": "2026-08-07T09:00:00Z",
+      "durationMs": 3
+    },
+    {
+      "llm": "gemini-2.5-flash",
+      "type": "llm_call",
+      "timestamp": "2026-08-07T09:00:01Z",
+      "input": {"system": "plan the research", "user": "compare two libraries"},
+      "output": "I will search and fetch in parallel.",
+      "cost": 0.10,
+      "inputTokens": 900,
+      "outputTokens": 120,
+      "durationMs": 1200
+    },
+    {
+      "tool": "search",
+      "toolCallId": "call-search-1",
+      "type": "tool_call",
+      "timestamp": "2026-08-07T09:00:02Z",
+      "input": {"q": "library A benchmarks"},
+      "durationMs": 400
+    },
+    {
+      "tool": "fetch",
+      "toolCallId": "call-fetch-1",
+      "type": "tool_call",
+      "timestamp": "2026-08-07T09:00:03Z",
+      "input": {"url": "https://example.com/a"},
+      "durationMs": 500
+    },
+    {
+      "tool": "fetch",
+      "toolCallId": "call-fetch-1",
+      "type": "tool_result",
+      "timestamp": "2026-08-07T09:00:04Z",
+      "durationMs": 500,
+      "error": "429 Too Many Requests"
+    },
+    {
+      "tool": "search",
+      "toolCallId": "call-search-1",
+      "type": "tool_result",
+      "timestamp": "2026-08-07T09:00:05Z",
+      "output": {"hits": 3},
+      "durationMs": 400
+    },
+    {
+      "node": "retry",
+      "type": "node_transition",
+      "timestamp": "2026-08-07T09:00:06Z",
+      "durationMs": 2
+    },
+    {
+      "node": "retry",
+      "type": "node_transition",
+      "timestamp": "2026-08-07T09:00:07Z",
+      "durationMs": 2
+    },
+    {
+      "node": "retry",
+      "type": "node_transition",
+      "timestamp": "2026-08-07T09:00:08Z",
+      "durationMs": 2
+    },
+    {
+      "node": "end",
+      "type": "node_transition",
+      "timestamp": "2026-08-07T09:00:10Z",
+      "durationMs": 3
+    }
+  ]
+}
