@@ -27,6 +27,9 @@ product version. The trace **schema** version is tracked separately; see
 - Black-box CLI tests (`cmd/trazo/cli_test.go`) that build the binary and assert
   exit codes (0/1/2), each output format, invalid flags, missing paths, empty
   directories, and config/flag precedence.
+- `-verbose` flag: prints operational metrics to stderr after a run
+  (`loaded=N valid=V invalid=I evaluated=E duration=Xms`), so batch runs are
+  observable without parsing the results.
 - Typed file errors: `runner.FileError` now carries an `ErrorKind`
   (`read_file`, `invalid_json`, `invalid_trace`, `evaluator`, `canceled`),
   surfaced as `errors[].kind` in the JSON output (bumped to `outputVersion` 1.1,

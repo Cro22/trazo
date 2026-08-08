@@ -41,6 +41,7 @@ func main() {
 	configPath := flag.String("config", "", "path to a JSON evaluator policy file (see docs/config.md)")
 	dir := flag.String("dir", "./testdata/runs", "directory of traces to scan when no PATH is given")
 	recursive := flag.Bool("recursive", false, "descend into subdirectories when PATH is a directory")
+	verbose := flag.Bool("verbose", false, "print operational metrics (loaded/valid/invalid/evaluated/duration) to stderr")
 	validate := flag.Bool("validate", false, "only check that traces load and pass structural validation; skip evaluators")
 	asJSON := flag.Bool("json", false, "print results as JSON (alias for -format json)")
 	format := flag.String("format", "text", "output format: text, json, or md")
@@ -143,7 +144,16 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
+	start := time.Now()
 	resp := runner.NewRunner(evaluators).RunFiles(ctx, files)
+	elapsed := time.Since(start)
+
+	if *verbose {
+		invalid := distinctInvalidFiles(resp)
+		evaluated := report.Summarize(resp, len(files)).Runs
+		log.Printf("loaded=%d valid=%d invalid=%d evaluated=%d duration=%s",
+			len(files), len(files)-invalid, invalid, evaluated, elapsed.Round(time.Millisecond))
+	}
 
 	meta := report.Meta{
 		TrazoVersion:       Version,
@@ -195,6 +205,16 @@ func render(out string, validate bool, resp *runner.Response, meta report.Meta) 
 			fmt.Print(report.Text(resp))
 		}
 	}
+}
+
+// distinctInvalidFiles counts the unique files that produced at least one error,
+// so a file with several evaluator errors is still counted once.
+func distinctInvalidFiles(resp *runner.Response) int {
+	seen := map[string]bool{}
+	for _, fe := range resp.FileErrors {
+		seen[fe.File] = true
+	}
+	return len(seen)
 }
 
 // splitCSV parses a comma-separated flag value into a trimmed, non-empty slice,

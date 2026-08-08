@@ -192,6 +192,17 @@ func TestCLI_EmptyDirectory(t *testing.T) {
 	}
 }
 
+func TestCLI_Verbose(t *testing.T) {
+	r := runCLI(t, "-verbose", "-dir", "../../testdata/runs")
+	if !strings.Contains(r.stderr, "loaded=") || !strings.Contains(r.stderr, "duration=") {
+		t.Errorf("expected operational metrics on stderr, got:\n%s", r.stderr)
+	}
+	// testdata/runs has 2 valid and 2 invalid fixtures.
+	if !strings.Contains(r.stderr, "valid=2") || !strings.Contains(r.stderr, "invalid=2") {
+		t.Errorf("unexpected metric counts, got:\n%s", r.stderr)
+	}
+}
+
 // TestCLI_FlagOverridesConfig pins the precedence rule: a config sets a lax cost
 // threshold (no finding), and an explicit -max-step-cost flag overrides it (a
 // finding appears). Both runs stay exit 0 because a cost finding is neutral.
