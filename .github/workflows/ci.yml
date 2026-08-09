@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+          cache: false # stdlib-only, no go.sum to key a module cache on
 
       - name: Go build, vet, test
         run: |
@@ -43,6 +44,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+          cache: false # stdlib-only, no go.sum to key a module cache on
 
       - name: JSON Schema stays in sync with the Go types
         run: go test ./trajectory/ -run "TestSchema" -v
@@ -69,6 +71,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+          cache: false # stdlib-only, no go.sum to key a module cache on
 
       - name: Build the trazo binary
         run: go build -o trazo ./cmd/trazo
