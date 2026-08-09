@@ -63,7 +63,7 @@ dist: ## Build release archives for every target platform
 	  echo "building $$os/$$arch"; \
 	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch \
 	    go build -trimpath -o $(DISTDIR)/$(BIN)$$ext $(CMD) || exit 1; \
-	  base=$(BIN)_$(VERSION)_$$os_$$arch; \
+	  base=$(BIN)_$(VERSION)_$${os}_$${arch}; \
 	  if [ $$os = windows ]; then \
 	    (cd $(DISTDIR) && zip -q $$base.zip $(BIN)$$ext && rm $(BIN)$$ext); \
 	  else \
