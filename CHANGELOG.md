@@ -37,6 +37,22 @@ product version. The trace **schema** version is tracked separately; see
   (`read_file`, `invalid_json`, `invalid_trace`, `evaluator`, `canceled`),
   surfaced as `errors[].kind` in the JSON output (bumped to `outputVersion` 1.1,
   additive) and tagged in the text output.
+- A realistic integration fixture (`testdata/complex_run.json`) and test that
+  runs the full structural evaluator set over one interleaved trace, asserting
+  how the work divides across judgments; it is also covered by the Python schema
+  conformance suite.
+- [docs/llm-judge.md](docs/llm-judge.md): the opt-in LLM-as-judge evaluator, its
+  determinism (temperature 0, capped tokens), timeout and cancellation model, and
+  the split between a malformed verdict (neutral finding) and a transport failure
+  (a run error; structural evaluators still run).
+- [docs/security.md](docs/security.md): what a trace holds, the single component
+  that sends data off-machine (the judge, final output only), how to disable
+  network egress, redaction at emit time, and not committing private traces.
+- Packaging and release: `LICENSE` (MIT), a `Makefile` (build, check, gate,
+  install, cross-compiled `dist` archives with checksums), a tag-triggered GitHub
+  Actions release workflow that guards the tag against the compiled-in version and
+  publishes binaries for Linux, macOS, and Windows (amd64/arm64), and a README
+  with badges, `go install` instructions, and links to the core docs.
 - This changelog.
 
 ### Changed

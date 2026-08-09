@@ -1,9 +1,34 @@
 # trazo
 
+[![CI](https://github.com/Cro22/trazo/actions/workflows/ci.yml/badge.svg)](https://github.com/Cro22/trazo/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Cro22/trazo?sort=semver)](https://github.com/Cro22/trazo/releases)
+[![Go version](https://img.shields.io/github/go-mod/go-version/Cro22/trazo)](go.mod)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Trajectory evaluation for LLM agents. trazo ingests agent run traces as JSON and
 runs evaluators over them, producing findings with a severity taxonomy. The core
 is written in Go; a Python LangGraph reference agent proves the framework end to
 end: real agent produces real traces, and the unmodified Go core evaluates them.
+
+## Install
+
+The CLI is a single self-contained binary with no runtime dependencies.
+
+```bash
+# With the Go toolchain (installs into $GOBIN):
+go install github.com/Cro22/trazo/cmd/trazo@latest
+
+# Or from source:
+git clone https://github.com/Cro22/trazo && cd trazo
+make build        # -> ./bin/trazo   (or: go build -o trazo ./cmd/trazo)
+```
+
+Prebuilt binaries for Linux, macOS, and Windows (amd64 and arm64) are attached to
+each [GitHub release](https://github.com/Cro22/trazo/releases). Verify a download
+against the release's `checksums.txt`, then put the binary on your `PATH`.
+
+`trazo version` reports the product version, the supported trace schema version,
+and the build's git commit and time.
 
 ## The severity taxonomy
 
@@ -61,6 +86,18 @@ on a directory of clean traces (`testdata/ci/clean`, exit 0) and asserts that a
 directory with a bad finding (`testdata/ci/failing`) makes trazo exit non-zero.
 The Markdown report is written to the job summary. This is how trazo fails a
 build on a `JudgmentBad`.
+
+## Core documentation
+
+- [docs/config.md](docs/config.md) — the `-config` evaluator policy file and
+  the defaults < config < flags precedence.
+- [docs/output.md](docs/output.md) — the versioned JSON output envelope.
+- [docs/versioning.md](docs/versioning.md) — product versus trace-schema
+  versioning and the release process.
+- [docs/llm-judge.md](docs/llm-judge.md) — the opt-in LLM-as-judge evaluator:
+  determinism, timeouts, cost, and failure handling.
+- [docs/security.md](docs/security.md) — what a trace holds, the one component
+  that sends data off-machine, and how to keep private traces private.
 
 ## Reference agent (LangGraph)
 
@@ -148,3 +185,7 @@ Model tier is a cheap flash model (`gemini-2.5-flash` by default) with
 temperature 0 and a low output-token cap. A full triage of one repo is about
 2,400 tokens and costs roughly **$0.002** per run. Override the model with
 `--model` and bound the loop with `--iteration-cap`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
