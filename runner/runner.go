@@ -16,8 +16,22 @@ type Runner struct {
 	evals []evaluator.Evaluator
 }
 
+// ErrorKind classifies why a file could not be evaluated, so callers (the CLI,
+// the JSON output, CI) can react by category instead of matching on message
+// strings.
+type ErrorKind string
+
+const (
+	ErrorKindReadFile     ErrorKind = "read_file"     // the file could not be read
+	ErrorKindInvalidJSON  ErrorKind = "invalid_json"  // the bytes are not valid JSON
+	ErrorKindInvalidTrace ErrorKind = "invalid_trace" // JSON parsed but failed Run.Validate
+	ErrorKindEvaluator    ErrorKind = "evaluator"     // an evaluator returned an error
+	ErrorKindCanceled     ErrorKind = "canceled"      // the context was canceled before processing
+)
+
 type FileError struct {
 	File string
+	Kind ErrorKind
 	Err  error
 }
 
@@ -132,28 +146,28 @@ func (r *Runner) processFile(ctx context.Context, path string) fileResult {
 	var res fileResult
 
 	if err := ctx.Err(); err != nil {
-		res.errs = append(res.errs, FileError{File: path, Err: err})
+		res.errs = append(res.errs, FileError{File: path, Kind: ErrorKindCanceled, Err: err})
 		return res
 	}
 
 	fileBytes, err := os.ReadFile(path)
 	if err != nil {
-		res.errs = append(res.errs, FileError{File: path, Err: err})
+		res.errs = append(res.errs, FileError{File: path, Kind: ErrorKindReadFile, Err: err})
 		return res
 	}
 	run, err := trajectory.LoadRun(fileBytes)
 	if err != nil {
-		res.errs = append(res.errs, FileError{File: path, Err: err})
+		res.errs = append(res.errs, FileError{File: path, Kind: ErrorKindInvalidJSON, Err: err})
 		return res
 	}
 	if err := run.Validate(); err != nil {
-		res.errs = append(res.errs, FileError{File: path, Err: err})
+		res.errs = append(res.errs, FileError{File: path, Kind: ErrorKindInvalidTrace, Err: err})
 		return res
 	}
 	for _, judge := range r.evals {
 		eval, err := judge.EvaluateRun(ctx, run)
 		if err != nil {
-			res.errs = append(res.errs, FileError{File: path, Err: err})
+			res.errs = append(res.errs, FileError{File: path, Kind: ErrorKindEvaluator, Err: err})
 			continue
 		}
 		// Carry the agent name for human-facing output; evaluators only set RunID.

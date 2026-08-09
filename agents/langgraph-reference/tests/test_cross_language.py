@@ -40,10 +40,10 @@ def _run_trazo(traces_dir: Path) -> dict:
 
 
 def _findings_for(result: dict, run_id: str) -> list[dict]:
-    if not any(ev["runId"] == run_id for ev in result["evaluations"]):
+    if not any(ev["runId"] == run_id for ev in result["results"]):
         raise AssertionError(f"run {run_id} not found in {result}")
     # Aggregate findings across every evaluator for this run.
-    return [f for ev in result["evaluations"] if ev["runId"] == run_id for f in ev["findings"]]
+    return [f for ev in result["results"] if ev["runId"] == run_id for f in ev["findings"]]
 
 
 def test_clean_run_evaluates_with_no_findings(tmp_path) -> None:
@@ -55,7 +55,7 @@ def test_clean_run_evaluates_with_no_findings(tmp_path) -> None:
     rec.flush(tmp_path, end_time=_dt(4))
 
     result = _run_trazo(tmp_path)
-    assert result["fileErrors"] == []
+    assert result["errors"] == []
     assert _findings_for(result, "run-clean") == []
 
 

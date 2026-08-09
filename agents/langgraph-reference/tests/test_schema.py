@@ -32,6 +32,7 @@ VALID_FIXTURES = [
     "testdata/sample_run_missing_result.json",
     "testdata/ci/clean/triage_clean.json",
     "testdata/ci/failing/tool_error.json",
+    "testdata/complex_run.json",
 ]
 
 

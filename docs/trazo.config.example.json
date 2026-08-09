@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "evaluators": {
+    "tool_calls": {
+      "enabled": true
+    },
+    "loops": {
+      "enabled": true,
+      "maxRepeats": 3
+    },
+    "cost_latency": {
+      "enabled": true,
+      "maxStepCost": 0.05,
+      "maxStepLatencyMs": 30000,
+      "maxRunCost": 0.2,
+      "maxRunLatencyMs": 120000
+    },
+    "node_transitions": {
+      "enabled": true,
+      "terminalNodes": ["end", "__end__", "finish", "done"]
+    },
+    "llm_judge": {
+      "enabled": false,
+      "model": "gemini-2.5-flash"
+    }
+  }
+}

@@ -85,7 +85,7 @@ def test_agent_trace_evaluates_clean_in_go(tmp_path) -> None:
     )
     assert proc.stdout, proc.stderr
     out = json.loads(proc.stdout)
-    assert out["fileErrors"] == []
+    assert out["errors"] == []
     # Clean means every evaluator (tool_calls, loops, cost_latency, node) is clean.
-    findings = [f for e in out["evaluations"] if e["runId"] == result.run_id for f in e["findings"]]
+    findings = [f for e in out["results"] if e["runId"] == result.run_id for f in e["findings"]]
     assert findings == [], findings

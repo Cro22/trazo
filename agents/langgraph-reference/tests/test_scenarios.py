@@ -85,5 +85,5 @@ def test_scenarios_produce_expected_severity_in_go(tmp_path, name, judgment) -> 
     assert proc.stdout, proc.stderr
     out = json.loads(proc.stdout)
     # Aggregate findings across every evaluator for this run.
-    findings = [f for e in out["evaluations"] if e["runId"] == result.run_id for f in e["findings"]]
+    findings = [f for e in out["results"] if e["runId"] == result.run_id for f in e["findings"]]
     assert any(f["judgment"] == judgment for f in findings), findings

@@ -12,6 +12,10 @@
 # Test binary, built with `go test -c`
 *.test
 
+# trazo build artifacts (Makefile `build`/`install` and ad-hoc `go build -o trazo`)
+/bin/
+/trazo
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 

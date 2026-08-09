@@ -1,5 +1,19 @@
 {
-  "evaluations": [
+  "outputVersion": "1.1",
+  "trazoVersion": "0.2.0",
+  "traceSchemaVersion": "0.1.0",
+  "generatedAt": "2026-08-07T12:00:00Z",
+  "summary": {
+    "files": 4,
+    "runs": 2,
+    "evaluations": 3,
+    "findings": 3,
+    "good": 0,
+    "neutral": 2,
+    "bad": 1,
+    "fileErrors": 1
+  },
+  "results": [
     {
       "evaluatorName": "tool_calls",
       "runId": "run-1",
@@ -34,9 +48,10 @@
       "findings": []
     }
   ],
-  "fileErrors": [
+  "errors": [
     {
       "file": "broken.json",
+      "kind": "invalid_json",
       "error": "unexpected end of JSON input"
     }
   ]

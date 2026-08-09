@@ -34,11 +34,11 @@ func Text(resp *runner.Response) string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(summaryLine(groups, order, len(resp.FileErrors)))
+	b.WriteString(summaryLine(resp))
 	if len(resp.FileErrors) > 0 {
 		b.WriteString("\nFile errors:\n")
 		for _, fe := range resp.FileErrors {
-			fmt.Fprintf(&b, "  %s: %s\n", fe.File, oneline(fe.Err.Error()))
+			b.WriteString(fileErrorLine(fe))
 		}
 	}
 	return b.String()
@@ -128,28 +128,26 @@ func stepText(idx int) string {
 	return fmt.Sprintf("step %d", idx)
 }
 
-func summaryLine(groups map[string]*runGroup, order []string, fileErrors int) string {
-	var bad, neutral, good int
-	for _, runID := range order {
-		for _, r := range groups[runID].rows {
-			switch r.severity {
-			case "[BAD]":
-				bad++
-			case "[NEUTRAL]":
-				neutral++
-			case "[GOOD]":
-				good++
-			}
-		}
-	}
+func summaryLine(resp *runner.Response) string {
+	s := Summarize(resp, 0)
 	return fmt.Sprintf("Summary: %s, %d bad, %d neutral, %d good, %s\n",
-		plural(len(order), "run"), bad, neutral, good, plural(fileErrors, "file error"))
+		plural(s.Runs, "run"), s.Bad, s.Neutral, s.Good, plural(s.FileErrors, "file error"))
 }
 
 // oneline flattens a possibly multi-line message onto a single line so table
 // rows stay aligned.
 func oneline(s string) string {
 	return strings.ReplaceAll(s, "\n", "; ")
+}
+
+// fileErrorLine renders one file error, tagging it with its kind when known so
+// the reader can tell a parse error from an invalid trace at a glance.
+func fileErrorLine(fe runner.FileError) string {
+	msg := oneline(fe.Err.Error())
+	if fe.Kind != "" {
+		return fmt.Sprintf("  %s [%s]: %s\n", fe.File, fe.Kind, msg)
+	}
+	return fmt.Sprintf("  %s: %s\n", fe.File, msg)
 }
 
 func plural(n int, unit string) string {

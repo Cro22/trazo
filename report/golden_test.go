@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Cro22/trazo/evaluator"
 	"github.com/Cro22/trazo/runner"
@@ -51,7 +52,7 @@ func goldenFixture() *runner.Response {
 			},
 		},
 		FileErrors: []runner.FileError{
-			{File: "broken.json", Err: errors.New("unexpected end of JSON input")},
+			{File: "broken.json", Kind: runner.ErrorKindInvalidJSON, Err: errors.New("unexpected end of JSON input")},
 		},
 	}
 }
@@ -59,7 +60,13 @@ func goldenFixture() *runner.Response {
 func TestGolden(t *testing.T) {
 	resp := goldenFixture()
 
-	jsonOut, err := JSON(resp)
+	meta := Meta{
+		TrazoVersion:       "0.2.0",
+		TraceSchemaVersion: "0.1.0",
+		Files:              4,
+		GeneratedAt:        time.Date(2026, 8, 7, 12, 0, 0, 0, time.UTC),
+	}
+	jsonOut, err := JSON(resp, meta)
 	if err != nil {
 		t.Fatalf("JSON: %v", err)
 	}

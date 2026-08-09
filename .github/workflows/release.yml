@@ -1,0 +1,51 @@
+name: Release
+
+# Cut a release by pushing a semver tag, e.g. `git tag v0.2.0 && git push --tags`.
+# The tag must match the compiled-in const Version in cmd/trazo/version.go, or the
+# guard below fails the build before anything is published.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # required to create the GitHub release and upload artifacts
+
+jobs:
+  release:
+    name: build and publish binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags and full history so build info is stamped correctly
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Tag matches the compiled-in version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          code="$(sed -n 's/.*const Version = "\([^"]*\)".*/\1/p' cmd/trazo/version.go)"
+          echo "tag=$tag code=$code"
+          if [ "$tag" != "$code" ]; then
+            echo "::error::tag v$tag does not match const Version $code in cmd/trazo/version.go"
+            exit 1
+          fi
+
+      - name: Build, vet, test before releasing
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Cross-compile release archives
+        run: make dist VERSION="${GITHUB_REF_NAME}"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/*
