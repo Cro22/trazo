@@ -46,8 +46,10 @@ Every finding carries one judgment (`evaluator/Evaluator.go`):
 - `trajectory/` — the `Run`/`Step` model, the JSON loader, and `Validate()`
   (structural invariants: ids, timestamps, per-type required fields).
 - `evaluator/` — the `Evaluator` interface and the evaluators:
-  - `tool_calls` — pairs tool calls with results (by tool name, in order) and
-    flags orphans (neutral) and tool errors (bad).
+  - `tool_calls` — pairs each tool result with its call by `toolCallId` when
+    present (authoritative, order-independent), falling back to tool name in FIFO
+    order only when a result carries no id; flags orphans (neutral) and tool
+    errors (bad).
   - `loops` — flags repetition (same tool plus identical input, or same node)
     at least `MaxRepeats` times; catches runaways the pairing check cannot see.
   - `cost_latency` — flags per-step and whole-run cost/latency budget breaches

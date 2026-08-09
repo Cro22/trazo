@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Cro22/trazo/config"
@@ -141,7 +142,7 @@ func main() {
 
 	// Cancel in-flight evaluation on Ctrl+C (SIGINT) or SIGTERM so a long run,
 	// notably one using the network-bound LLM judge, stops promptly.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	start := time.Now()
